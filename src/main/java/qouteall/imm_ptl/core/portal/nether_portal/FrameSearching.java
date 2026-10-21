@@ -104,7 +104,7 @@ public class FrameSearching {
                 cy++
             ) {
                 LevelChunkSection chunkSection = fastBlockAccess.getSection(
-                    chunkPos.x, cy, chunkPos.z
+                    chunkPos.x(), cy, chunkPos.z()
                 );
                 if (chunkSection != null && !chunkSection.hasOnlyAir()) {
                     int localYStart = Math.max(0, yRangeStart - cy * 16);

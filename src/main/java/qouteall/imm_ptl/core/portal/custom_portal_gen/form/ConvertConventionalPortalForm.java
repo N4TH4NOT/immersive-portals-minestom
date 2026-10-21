@@ -129,7 +129,7 @@ public class ConvertConventionalPortalForm extends PortalGenForm {
         
         if (portalGenInfo == null) {
             Helper.err("Shapes are incompatible");
-            player.displayClientMessage(
+            qouteall.imm_ptl.core.McHelper.sendMessage(player,
                 Component.translatable(
                     "imm_ptl.incompatible_shape"
                 ), false

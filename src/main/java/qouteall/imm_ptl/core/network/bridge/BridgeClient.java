@@ -71,6 +71,10 @@ public final class BridgeClient {
                     "ClientboundDamageEventPacket");
 
     public static void init() {
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
+                client -> {
+                    if (isActive()) BridgeGravity.tick();
+                });
         ClientPlayNetworking.registerGlobalReceiver(
                 BridgePayload.TYPE,
                 (payload, context) -> handle(BridgeCodec.decode(payload.bytes())));
@@ -112,7 +116,12 @@ public final class BridgeClient {
                         && hello.minecraftProtocol() == BridgeCodec.MINECRAFT_PROTOCOL)
                     send(
                             new BridgeMessage.Hello(
-                                    BridgeCodec.VERSION, BridgeCodec.MINECRAFT_PROTOCOL));
+                                    BridgeCodec.VERSION,
+                                    BridgeCodec.MINECRAFT_PROTOCOL,
+                                    qouteall.imm_ptl.core.compat.GravityChangerInterface.invoker
+                                                    .isGravityChangerPresent()
+                                            ? BridgeCodec.FEATURE_GRAVITY
+                                            : 0));
             }
             case BridgeMessage.Welcome welcome -> {
                 if (session != null && !session.equals(welcome.session())) clear();
@@ -155,7 +164,7 @@ public final class BridgeClient {
             }
             case BridgeMessage.Remove remove -> remove(remove.portal());
             case BridgeMessage.Clear ignored -> {
-                PORTALS.keySet().stream().toList().forEach(BridgeClient::remove);
+                clear();
             }
             case BridgeMessage.OpenView open -> {
                 if (!isActive() || (!VIEWS.containsKey(open.view()) && VIEWS.size() >= 8)) return;
@@ -177,12 +186,18 @@ public final class BridgeClient {
             case BridgeMessage.Correction correction -> {
                 if (!isActive() || CLIENT.player == null) return;
                 ScaleUtils.setIPortalScaling(CLIENT.player, correction.portalScale());
+                qouteall.imm_ptl.core.compat.GravityChangerInterface.invoker.applyState(
+                        CLIENT.player, correction.gravity(), true);
                 qouteall.imm_ptl.core.teleportation.ClientTeleportationManager.forceTeleportPlayer(
                         world(correction.world()), vec(correction.feet()));
                 CLIENT.player.setYRot(correction.yaw());
                 CLIENT.player.setXRot(correction.pitch());
-                CLIENT.player.setDeltaMovement(vec(correction.velocity()).scale(1.0 / 20));
+                McHelper.setWorldVelocity(
+                        CLIENT.player, vec(correction.velocity()).scale(1.0 / 20));
                 expectedRespawn = null;
+            }
+            case BridgeMessage.Gravity gravity -> {
+                if (isActive()) BridgeGravity.receive(gravity);
             }
             case BridgeMessage.Rejected rejected ->
                     CHelper.printChat(
@@ -230,6 +245,9 @@ public final class BridgeClient {
         data.putDouble("width", definition.width());
         data.putDouble("height", definition.height());
         data.putDouble("scale", definition.scale());
+        // SDK defaults are authoritative, independently of each client's local portal defaults.
+        if (!data.contains("teleportChangesGravity"))
+            data.putBoolean("teleportChangesGravity", false);
         Helper.putVec3d(data, "axisW", vec(definition.axisW()));
         Helper.putVec3d(data, "axisH", vec(definition.axisH()));
         Helper.putVec3d(data, "destination", vec(definition.destination()));
@@ -323,6 +341,7 @@ public final class BridgeClient {
         PORTALS.clear();
         VIEWS.clear();
         PACKETS.clear();
+        BridgeGravity.clear();
         session = null;
         expectedRespawn = null;
     }

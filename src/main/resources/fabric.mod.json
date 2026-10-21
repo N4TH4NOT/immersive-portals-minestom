@@ -65,6 +65,7 @@
     "iris": "<1.11.4",
     "sodium": "<0.9.2",
     "gravity_api": "*",
+    "gravity_changer": "<1.5.2-beta.5-mc26.2",
     "vmp": "*"
   },
   "custom": {

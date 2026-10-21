@@ -5,7 +5,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.util.Tuple;
+import qouteall.q_misc_util.my_util.Tuple;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
@@ -65,7 +65,7 @@ public class BlockManipulationClient {
             return;
         }
         
-        Vec3 cameraPos = client.gameRenderer.getMainCamera().getPosition();
+        Vec3 cameraPos = client.gameRenderer.mainCamera().position();
         
         double reachDistance = client.player.blockInteractionRange();
         
@@ -89,7 +89,7 @@ public class BlockManipulationClient {
     }
     
     private static double getCurrentTargetDistance() {
-        Vec3 cameraPos = client.gameRenderer.getMainCamera().getPosition();
+        Vec3 cameraPos = client.gameRenderer.mainCamera().position();
         
         if (hitResultIsMissedOrNull(client.hitResult)) {
             return 23333;
@@ -237,7 +237,7 @@ public class BlockManipulationClient {
         }
         if (remoteHitResult instanceof BlockHitResult blockHitResult) {
             return "Point:%s %d %d %d".formatted(
-                remotePointedDim.location(),
+                remotePointedDim.identifier(),
                 blockHitResult.getBlockPos().getX(),
                 blockHitResult.getBlockPos().getY(),
                 blockHitResult.getBlockPos().getZ()

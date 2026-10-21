@@ -90,7 +90,7 @@ public abstract class PortalRenderer {
                 RenderSystem.getProjectionMatrix()
             );
             
-            Vec3 cameraPos = client.gameRenderer.getMainCamera().getPosition();
+            Vec3 cameraPos = client.gameRenderer.mainCamera().position();
             frustum.prepare(cameraPos.x, cameraPos.y, cameraPos.z);
             
             return frustum;

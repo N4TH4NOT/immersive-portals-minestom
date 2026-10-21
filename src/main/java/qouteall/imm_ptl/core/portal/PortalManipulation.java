@@ -4,7 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Tuple;
+import qouteall.q_misc_util.my_util.Tuple;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.ClipContext;
@@ -377,8 +377,8 @@ public class PortalManipulation {
             return null;
         }
         
-        Vec3 axisH = Vec3.atLowerCornerOf(hitResult.getDirection().getNormal());
-        Vec3 axisW = axisH.cross(Vec3.atLowerCornerOf(lookingDirection.getOpposite().getNormal()));
+        Vec3 axisH = Vec3.atLowerCornerOf(hitResult.getDirection().getUnitVec3i());
+        Vec3 axisW = axisH.cross(Vec3.atLowerCornerOf(lookingDirection.getOpposite().getUnitVec3i()));
         Vec3 pos = Vec3.atCenterOf(hitResult.getBlockPos())
             .add(axisH.scale(0.5 + height / 2));
         

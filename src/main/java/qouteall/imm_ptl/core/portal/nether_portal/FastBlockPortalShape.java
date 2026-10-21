@@ -88,7 +88,7 @@ public record FastBlockPortalShape(
     // (this is not needed when Valhalla is released)
     public static long assemble(int a, int b) {
         // this is not chunk pos but the packing is same as chunk pos
-        return ChunkPos.asLong(a, b);
+        return ChunkPos.pack(a, b);
     }
     
     public static int getAFromAssemble(long l) {

@@ -105,7 +105,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     @Override
     public LevelChunk getChunk(int x, int z, ChunkStatus chunkStatus, boolean create) {
         return readChunkMap(chunkMap -> {
-            LevelChunk chunk = chunkMap.get(ChunkPos.asLong(x, z));
+            LevelChunk chunk = chunkMap.get(ChunkPos.pack(x, z));
             if (chunk != null) {
                 return chunk;
             }
@@ -116,7 +116,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     
     public boolean isChunkLoaded(int x, int z) {
         return readChunkMap(chunkMap -> {
-            return chunkMap.containsKey(ChunkPos.asLong(x, z));
+            return chunkMap.containsKey(ChunkPos.pack(x, z));
         });
     }
     
@@ -124,7 +124,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     public void replaceBiomes(int x, int z, FriendlyByteBuf friendlyByteBuf) {
         Validate.isTrue(Thread.currentThread() == mainThread);
         
-        long chunkPosLong = ChunkPos.asLong(x, z);
+        long chunkPosLong = ChunkPos.pack(x, z);
         
         LevelChunk worldChunk = chunkMapForMainThread.get(chunkPosLong);
         ChunkPos chunkPos = new ChunkPos(x, z);
@@ -144,7 +144,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     ) {
         Validate.isTrue(Thread.currentThread() == mainThread);
         
-        long chunkPosLong = ChunkPos.asLong(x, z);
+        long chunkPosLong = ChunkPos.pack(x, z);
         LevelChunk worldChunk = chunkMapForMainThread.get(chunkPosLong);
         if (worldChunk == null) {
             worldChunk = new LevelChunk(this.level, new ChunkPos(x, z));
@@ -185,14 +185,14 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
         catch (Exception e) {
             LOGGER.error(
                 "Error deserializing chunk packet {} {}",
-                worldChunk.getLevel().dimension().location(),
+                worldChunk.getLevel().dimension().identifier(),
                 worldChunk.getPos(),
                 e
             );
             CHelper.printChat(
                 Component
                     .literal("Failed to deserialize chunk packet. %s %s %s".formatted(
-                        worldChunk.getLevel().dimension().location(),
+                        worldChunk.getLevel().dimension().identifier(),
                         worldChunk.getPos().x, worldChunk.getPos().z
                     ))
                     .append(Component.literal(" Report issue:"))

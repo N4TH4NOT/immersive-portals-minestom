@@ -13,7 +13,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.minecraft.util.Tuple;
+import qouteall.q_misc_util.my_util.Tuple;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -102,7 +102,7 @@ public class BlockManipulationServer {
         BlockHitResult blockHitResult
     ) {
         Direction side = blockHitResult.getDirection();
-        Vec3 sideVec = Vec3.atLowerCornerOf(side.getNormal());
+        Vec3 sideVec = Vec3.atLowerCornerOf(side.getUnitVec3i());
         BlockPos hitPos = blockHitResult.getBlockPos();
         Vec3 hitCenter = Vec3.atCenterOf(hitPos);
         
@@ -147,7 +147,7 @@ public class BlockManipulationServer {
             ServerboundPlayerActionPacket packet = ServerboundPlayerActionPacket.STREAM_CODEC.decode(buf);
             
             ServerLevel world = player.server.getLevel(dimension);
-            Validate.notNull(world, "missing %s", dimension.location());
+            Validate.notNull(world, "missing %s", dimension.identifier());
             
             withRedirect(
                 new Context(world, null),
@@ -170,7 +170,7 @@ public class BlockManipulationServer {
             ServerboundUseItemOnPacket packet = ServerboundUseItemOnPacket.STREAM_CODEC.decode(buf);
             
             ServerLevel world = player.server.getLevel(dimension);
-            Validate.notNull(world, "missing %s", dimension.location());
+            Validate.notNull(world, "missing %s", dimension.identifier());
             
             withRedirect(
                 new Context(world, packet.getHitResult()),

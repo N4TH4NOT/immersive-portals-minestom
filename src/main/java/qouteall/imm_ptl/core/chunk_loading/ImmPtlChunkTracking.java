@@ -106,7 +106,7 @@ public class ImmPtlChunkTracking {
         public String toString() {
             return String.format(
                 "%s (%d,%d) distance:%d valid:%s loaded:%s",
-                dimension.location(),
+                dimension.identifier(),
                 ChunkPos.getX(chunkPos),
                 ChunkPos.getZ(chunkPos),
                 distanceToSource,
@@ -189,7 +189,7 @@ public class ImmPtlChunkTracking {
             ImmPtlChunkTickets ticketInfo = ImmPtlChunkTickets.get(world);
             
             chunkLoader.foreachChunkPos((dim, x, z, distanceToSource) -> {
-                long chunkPos = ChunkPos.asLong(x, z);
+                long chunkPos = ChunkPos.pack(x, z);
                 var records =
                     chunkRecordMap.computeIfAbsent(chunkPos, k -> new Object2ObjectOpenHashMap<>());
                 
@@ -336,7 +336,7 @@ public class ImmPtlChunkTracking {
             ServerLevel world = server.getLevel(dimension);
             
             if (world == null) {
-                LOGGER.error("Missing dimension in chunk loader {}", dimension.location());
+                LOGGER.error("Missing dimension in chunk loader {}", dimension.identifier());
                 return true;
             }
             
@@ -347,7 +347,7 @@ public class ImmPtlChunkTracking {
             chunkLoader.foreachChunkPos(new ChunkLoader.ChunkPosConsumer() {
                 @Override
                 public void consume(ResourceKey<Level> dimension, int x, int z, int distanceToSource) {
-                    long chunkPos = ChunkPos.asLong(x, z);
+                    long chunkPos = ChunkPos.pack(x, z);
                     dimTicketManager.markForLoading(chunkPos, distanceToSource, generationCounter);
                     set.add(chunkPos);
                 }
@@ -404,7 +404,7 @@ public class ImmPtlChunkTracking {
         int x, int z,
         Predicate<PlayerWatchRecord> predicate
     ) {
-        long chunkPos = ChunkPos.asLong(x, z);
+        long chunkPos = ChunkPos.pack(x, z);
         
         var recordMap = getDimChunkWatchRecords(dimension).get(chunkPos);
         if (recordMap == null) {
@@ -494,7 +494,7 @@ public class ImmPtlChunkTracking {
     public static Object2ObjectOpenHashMap<ServerPlayer, PlayerWatchRecord> getWatchRecordForChunk(
         ResourceKey<Level> dimension, int x, int z
     ) {
-        return getDimChunkWatchRecords(dimension).get(ChunkPos.asLong(x, z));
+        return getDimChunkWatchRecords(dimension).get(ChunkPos.pack(x, z));
     }
     
     public static void forceRemovePlayer(ServerPlayer oldPlayer) {
@@ -570,14 +570,14 @@ public class ImmPtlChunkTracking {
         ServerLevel world = server.getLevel(dimension);
         
         if (world == null) {
-            LOGGER.error("Missing dimension in chunk loader {}", dimension.location());
+            LOGGER.error("Missing dimension in chunk loader {}", dimension.identifier());
             return;
         }
         
         ImmPtlChunkTickets dimTicketManager = ImmPtlChunkTickets.get(world);
         
         chunkLoader.foreachChunkPos((dim, x, z, distanceToSource) -> {
-            dimTicketManager.markForLoading(ChunkPos.asLong(x, z), distanceToSource, generationCounter);
+            dimTicketManager.markForLoading(ChunkPos.pack(x, z), distanceToSource, generationCounter);
         });
     }
     
@@ -644,7 +644,7 @@ public class ImmPtlChunkTracking {
         
         for (int x = lowPos.x; x <= highPos.x; x++) {
             for (int z = lowPos.z; z <= highPos.z; z++) {
-                long chunkPosLong = ChunkPos.asLong(x, z);
+                long chunkPosLong = ChunkPos.pack(x, z);
                 
                 ChunkHolder chunkHolder = chunkMap.ip_getChunkHolder(chunkPosLong);
                 if (chunkHolder != null) {

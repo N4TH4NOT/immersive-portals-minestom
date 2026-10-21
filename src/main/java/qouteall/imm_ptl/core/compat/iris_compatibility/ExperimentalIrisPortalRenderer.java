@@ -1,10 +1,33 @@
 package qouteall.imm_ptl.core.compat.iris_compatibility;
 
-import qouteall.imm_ptl.core.render.renderer.RendererUsingFrameBuffer;
+import org.joml.Matrix4f;
 
-/** Iris uses the same isolated native world contexts and GPU compositor. */
-public final class ExperimentalIrisPortalRenderer extends RendererUsingFrameBuffer {
-    public static final ExperimentalIrisPortalRenderer instance = new ExperimentalIrisPortalRenderer();
-    public static final ExperimentalIrisPortalRenderer debugModeInstance = new ExperimentalIrisPortalRenderer();
+import qouteall.imm_ptl.core.render.renderer.RendererDebug;
+import qouteall.imm_ptl.core.render.renderer.RendererUsingStencil;
+
+/** Batches visibility prepasses before world rendering, limiting live masks to four per layer. */
+public final class ExperimentalIrisPortalRenderer extends RendererUsingStencil {
+    public static final ExperimentalIrisPortalRenderer instance =
+            new ExperimentalIrisPortalRenderer(false);
+    public static final ExperimentalIrisPortalRenderer debugModeInstance =
+            new ExperimentalIrisPortalRenderer(true);
+    private final boolean debug;
+    private final RendererDebug debugRenderer = new RendererDebug();
+
+    private ExperimentalIrisPortalRenderer(boolean debug) {
+        this.debug = debug;
+    }
+
+    @Override
+    protected boolean batchVisibility() {
+        return true;
+    }
+
+    @Override
+    public void onBeforeTranslucentRendering(Matrix4f view) {
+        if (debug) debugRenderer.onBeforeTranslucentRendering(view);
+        else super.onBeforeTranslucentRendering(view);
+    }
+
     public static void init() {}
 }

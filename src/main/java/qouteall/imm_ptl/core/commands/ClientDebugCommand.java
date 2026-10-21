@@ -565,16 +565,6 @@ public class ClientDebugCommand {
         );
         registerSwitchCommand(
             builder,
-            "cache_gl_buffer",
-            cond -> IPGlobal.cacheGlBuffer = cond
-        );
-        registerSwitchCommand(
-            builder,
-            "secondary_vertex_consumer",
-            cond -> IPGlobal.useSecondaryEntityVertexConsumer = cond
-        );
-        registerSwitchCommand(
-            builder,
             "cull_sections_behind",
             cond -> IPGlobal.cullSectionsBehind = cond
         );
@@ -582,11 +572,6 @@ public class ClientDebugCommand {
             builder,
             "offset_occlusion_query",
             cond -> IPGlobal.offsetOcclusionQuery = cond
-        );
-        registerSwitchCommand(
-            builder,
-            "cloud_optimization",
-            cond -> IPGlobal.cloudOptimization = cond
         );
         registerSwitchCommand(
             builder,
@@ -602,11 +587,6 @@ public class ClientDebugCommand {
             builder,
             "depth_clamp_for_portal_rendering",
             cond -> IPGlobal.enableDepthClampForPortalRendering = cond
-        );
-        registerSwitchCommand(
-            builder,
-            "shared_block_mesh_builder",
-            cond -> IPGlobal.enableSharedBlockMeshBuffers = cond
         );
         registerSwitchCommand(
             builder,
@@ -627,11 +607,6 @@ public class ClientDebugCommand {
             builder,
             "iris_stencil",
             cond -> IPCGlobal.debugEnableStencilWithIris = cond
-        );
-        registerSwitchCommand(
-            builder,
-            "another_stencil",
-            cond -> IPCGlobal.useSeparatedStencilFormat = cond
         );
         registerSwitchCommand(
             builder,

@@ -409,6 +409,7 @@ public class ClientWorldLoader {
     }
     
     public static Set<ResourceKey<Level>> getServerDimensions() {
+        if(qouteall.imm_ptl.core.network.bridge.BridgeClient.isActive() && dimIdToDimTypeId!=null)return dimIdToDimTypeId.keySet();
         assert CLIENT.player != null;
         return CLIENT.player.connection.levels();
     }

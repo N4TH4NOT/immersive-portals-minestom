@@ -252,8 +252,12 @@ public class ImmPtlNetworkConfig {
         );
     }
     
+    private static int missingServerWarningTicks=-1;
     @Environment(EnvType.CLIENT)
     public static void initClient() {
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client->{
+            if(missingServerWarningTicks>0 && --missingServerWarningTicks==0 && serverVersion==null && !qouteall.imm_ptl.core.network.bridge.BridgeClient.isActive())warnServerMissingImmPtl();
+        });
         // ClientConfigurationNetworking.ConfigurationPacketHandler does not provide
         // ClientConfigurationPacketListenerImpl argument
         ClientConfigurationNetworking.registerGlobalReceiver(
@@ -278,7 +282,7 @@ public class ImmPtlNetworkConfig {
     
     private static void onClientJoin() {
         if (serverVersion == null) {
-            warnServerMissingImmPtl();
+            missingServerWarningTicks=60;
         }
         else {
             if (serverVersion.isNormalVersion() &&

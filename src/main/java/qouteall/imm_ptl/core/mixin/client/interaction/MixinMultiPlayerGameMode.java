@@ -114,6 +114,9 @@ public abstract class MixinMultiPlayerGameMode implements IEClientPlayerInteract
     
     private static Packet<?> ip_redirectPacket(Packet<?> packet) {
         if (ClientWorldLoader.getIsWorldSwitched()) {
+            if (qouteall.imm_ptl.core.network.bridge.BridgeClient.isActive()) {
+                return qouteall.imm_ptl.core.network.bridge.BridgeClient.interaction(packet,qouteall.imm_ptl.core.block_manipulation.BlockManipulationClient.remotePortalPath);
+            }
             ResourceKey<Level> dimension = Minecraft.getInstance().level.dimension();
             if (packet instanceof ServerboundPlayerActionPacket playerActionPacket) {
                 if (BlockManipulationServer.isAttackingAction(playerActionPacket.getAction())) {

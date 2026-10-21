@@ -369,6 +369,8 @@ public class ClientTeleportationManager {
         
         ScaleUtils.onClientPlayerTeleported(portal);
         
+        if (!qouteall.imm_ptl.core.network.bridge.BridgeClient.teleport(portal,
+            teleportation.lastWorldEyePos(), teleportation.currentWorldEyePos())) {
         player.connection.send(ClientPlayNetworking.createServerboundPacket(
             new ImmPtlNetworking.TeleportPacket(
                 PortalAPI.clientDimKeyToInt(fromDimension),
@@ -377,6 +379,8 @@ public class ClientTeleportationManager {
             )
         ));
         
+        }
+
         PortalCollisionHandler.updateCollidingPortalAfterTeleportation(
             player, newThisTickEyePos, newLastTickEyePos, RenderStates.getPartialTick()
         );

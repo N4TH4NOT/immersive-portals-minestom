@@ -84,6 +84,11 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
         isReProcessingPassengerPacket = false;
     }
     
+    @Inject(method="handleRespawn", at=@At("HEAD"), cancellable=true)
+    private void ip_bridgeRespawn(net.minecraft.network.protocol.game.ClientboundRespawnPacket packet, CallbackInfo ci) {
+        if(Minecraft.getInstance().isSameThread() && qouteall.imm_ptl.core.network.bridge.BridgeClient.consumeRespawn(packet))ci.cancel();
+    }
+
     @Inject(method="handleMovePlayer", at=@At("HEAD"))
     private void ip_positionPacket(ClientboundPlayerPositionPacket packet, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();

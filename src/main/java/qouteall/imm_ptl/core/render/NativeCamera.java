@@ -65,11 +65,18 @@ public final class NativeCamera extends Camera {
                         .transformDirection(new Vector3f(0, 0, -1))
                         .normalize();
         setRotation(
+                (float) java.lang.Math.toDegrees(java.lang.Math.atan2(-forward.x, forward.z)),
                 (float)
                         -java.lang.Math.toDegrees(
-                                java.lang.Math.asin(java.lang.Math.clamp(forward.y, -1, 1))),
-                (float) java.lang.Math.toDegrees(java.lang.Math.atan2(-forward.x, forward.z)));
+                                java.lang.Math.asin(java.lang.Math.clamp(forward.y, -1, 1))));
         rotation().setFromUnnormalized(this.view).conjugate().normalize();
+        // setRotation also passes through Gravity Changer. This camera's view already includes
+        // that transform and portal roll: rebuild every axis from its final quaternion.
+        var access = (NativeCameraAccess) (Object) this;
+        rotation().transform(0, 0, -1, access.ip_forwards());
+        rotation().transform(0, 1, 0, access.ip_up());
+        rotation().transform(-1, 0, 0, access.ip_left());
+        access.ip_panoramicForwards().set(access.ip_forwards());
         ((NativeCameraAccess) (Object) this).ip_setupPerspective(.05f, far, fov, width, height);
         // Visibility uses a finite, conventional depth range. Expanding the native
         // culling frustum with an oblique reverse-Z projection can otherwise loop forever.

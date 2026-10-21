@@ -18,6 +18,7 @@ Les anciennes implémentations OpenGL du moteur de rendu ont été remplacées.
 | Cloth Config, inclus dans le JAR | 26.2.155 |
 | Sodium, optionnel | 0.9.2 pour 26.2 |
 | Iris, optionnel | 1.11.4 pour 26.2 |
+| Gravity Changer Unofficial Port, optionnel | 1.5.2-beta.5-mc26.2 |
 | Mod Menu, optionnel | 20.0.3 |
 | Minestom | 2026.10.07-26.2 |
 
@@ -33,6 +34,11 @@ Le mod est produit dans `build/libs/immersive-portals-7.0.0-alpha.1.jar`.
 Installer ce JAR et Fabric API dans `mods/`, avec Fabric Loader 0.20.1.
 Utiliser le JAR sans suffixe `-sources`. Le protocole commun et Cloth Config sont
 embarqués ; la bibliothèque Minestom n’est pas un mod Fabric.
+
+La [gravité directionnelle](docs/gravity-26.2.md) s’intègre au client Fabric et
+au SDK Minestom : six directions, intensité, traversées et interactions distantes.
+Le JAR de Gravity Changer reste une installation optionnelle côté client ; un
+serveur Fabric l’installe aussi, tandis que Minestom utilise l’API du SDK.
 
 Pour préparer un environnement cloud Linux x86-64 avec téléchargement vérifié du
 JDK, configuration du proxy Java et compilation :

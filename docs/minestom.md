@@ -62,6 +62,7 @@ PortalOptions options = PortalOptions.builder()
     .triangles(-1, -1, 1, -1, 0, 1)
     .interactable(true)
     .changesScale(true)
+    .changesGravity(true)
     .crossPortalCollision(true)
     .build();
 handle.update(builder -> builder.extraNbt(options.encode()));
@@ -139,6 +140,28 @@ Les règles de jeu, les groupes de passagers et les inventaires restent sous le
 contrôle de l'application serveur. Le serveur Fabric conserve son gestionnaire
 complet de téléportation d'entités.
 
+## Gravité directionnelle
+
+Le SDK dispose de `portals.gravity()` pour régler la direction et l’intensité,
+calculer les yeux et le regard dans le monde et tester le support local d’une
+entité vivante. `portals.supportsGravity(player)` vérifie la capacité négociée
+avec Gravity Changer Unofficial Port côté client. Un serveur Minestom n’installe
+pas le JAR Fabric.
+
+```java
+if (portals.supportsGravity(player)) {
+    portals.gravity().set(player, new GravityState(GravityDirection.NORTH, 12));
+}
+```
+
+L’option `.changesGravity(true)` transforme la direction à la traversée du
+portail. La gravité des joueurs et des entités visibles est synchronisée dans
+les mondes courants et distants. La physique passive, les règles de référentiel,
+les limites de l’intégration Minestom et les scénarios de validation sont décrits
+dans [`gravity-26.2.md`](gravity-26.2.md).
+Le [rapport sur les responsabilités client/serveur et les clients sans mod](rapport-gravite-minestom.md)
+détaille aussi les protections et les contraintes de conception d’un serveur mixte.
+
 ## Interactions distantes
 
 ```java
@@ -183,7 +206,10 @@ s'exécutent dans deux terminaux, avec l'environnement graphique décrit dans
 
 ## Limites et nettoyage
 
-Le protocole version 1 cible exclusivement Minecraft 26.2 / protocole 776.
+Le protocole version 2 cible exclusivement Minecraft 26.2 / protocole 776.
+Cette version ajoute la négociation de gravité et son état dans les corrections.
+Le mod et le SDK doivent être mis à jour ensemble ; un pair utilisant la version 1
+doit être mis à jour avant connexion.
 Limites actuelles : 64 mondes enregistrés, 4 096 portails, huit vues distantes par
 joueur, trois niveaux de recherche, 49 chunks et 256 entités par vue. La taille
 maximale d’un paquet reconstitué est 2 Mio ; les fragments et la NBT sont bornés.

@@ -65,10 +65,7 @@
       "<1.8.0",
       ">1.8.0"
     ],
-    "sodium": [
-      "<0.6.0",
-      ">0.6.0"
-    ],
+    "sodium": "<0.9.2",
     "gravity_api": "*",
     "vmp": "*"
   },
@@ -80,7 +77,6 @@
     },
     "fabric-renderer-indigo:force_compatibility": true,
     "lithium:options": {
-      "mixin.world.player_chunk_tick": false,
       "mixin.world.combined_heightmap_update": false
     },
     "dashloader:disableoption": [

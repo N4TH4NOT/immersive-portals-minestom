@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.core.teleportation;
 
 import com.mojang.logging.LogUtils;
+
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -17,10 +18,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.phys.Vec3;
+
 import org.apache.commons.lang3.Validate;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
-import qouteall.q_misc_util.dimension.DimensionLifecycle;
+
 import qouteall.imm_ptl.core.IPMcHelper;
 import qouteall.imm_ptl.core.IPPerServerInfo;
 import qouteall.imm_ptl.core.McHelper;
@@ -38,6 +40,7 @@ import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
 import qouteall.q_misc_util.MiscHelper;
 import qouteall.q_misc_util.api.McRemoteProcedureCall;
+import qouteall.q_misc_util.dimension.DimensionLifecycle;
 import qouteall.q_misc_util.my_util.MyTaskList;
 import qouteall.q_misc_util.my_util.WithDim;
 
@@ -204,10 +207,15 @@ public class ServerTeleportationManager {
             ScaleUtils.onServerEntityTeleported(player, portal);
             
             if (portal.getTeleportChangesGravity()) {
-                Direction oldGravityDir = GravityChangerInterface.invoker.getGravityDirection(player);
+                Direction oldGravityDir =
+                        GravityChangerInterface.invoker.getBaseGravityDirection(player);
                 GravityChangerInterface.invoker.setBaseGravityDirectionServer(
                     player, portal.getTransformedGravityDirection(oldGravityDir)
                 );
+                // Re-anchor feet after the direction changes so the transformed eyes stay fixed.
+                McHelper.setEyePos(player, newEyePos, newEyePos);
+                McHelper.updateBoundingBox(player);
+                player.connection.resetPosition();
             }
             
         }
@@ -220,8 +228,7 @@ public class ServerTeleportationManager {
             teleportEntityGeneral(player, player.position(), ((ServerLevel) player.level()));
             ScaleUtils.setBaseScale(player, ScaleUtils.getBaseScale(player));
             GravityChangerInterface.invoker.setBaseGravityDirectionServer(
-                player, GravityChangerInterface.invoker.getGravityDirection(player)
-            );
+                    player, GravityChangerInterface.invoker.getBaseGravityDirection(player));
         }
     }
     
@@ -515,7 +522,11 @@ public class ServerTeleportationManager {
         }
         
         if (entity.level() != portal.level()) {
-            LOGGER.error("Cannot teleport {} from {} through {}", entity, entity.level().dimension(), portal);
+            LOGGER.error(
+                    "Cannot teleport {} from {} through {}",
+                    entity,
+                    entity.level().dimension(),
+                    portal);
             return;
         }
         
@@ -541,7 +552,13 @@ public class ServerTeleportationManager {
         List<Entity> passengerList = entity.getPassengers();
         
         Vec3 newEyePos = getRegularEntityTeleportedEyePos(entity, portal);
-        
+
+        if (portal.getTeleportChangesGravity()) {
+            Direction gravity = GravityChangerInterface.invoker.getBaseGravityDirection(entity);
+            GravityChangerInterface.invoker.setBaseGravityDirectionServer(
+                    entity, portal.getTransformedGravityDirection(gravity));
+        }
+
         TeleportationUtil.transformEntityVelocity(
             portal, entity, TeleportationUtil.PortalPointVelocity.ZERO, oldPos
         );
@@ -560,20 +577,18 @@ public class ServerTeleportationManager {
         
         McHelper.setEyePos(entity, newEyePos, newEyePos);
         McHelper.updateBoundingBox(entity);
-        
+
         // living entities do position interpolation
         // it may interpolate into unloaded chunks and stuck
         // avoid position interpolation
         McHelper.sendToTrackers(
-            entity,
-            McRemoteProcedureCall.createPacketToSendToClient(
-                "qouteall.imm_ptl.core.teleportation.ClientTeleportationManager.RemoteCallables.updateEntityPos",
-                entity.level().dimension(),
-                entity.getId(),
-                entity.position()
-            )
-        );
-        
+                entity,
+                McRemoteProcedureCall.createPacketToSendToClient(
+                        "qouteall.imm_ptl.core.teleportation.ClientTeleportationManager.RemoteCallables.updateEntityPos",
+                        entity.level().dimension(),
+                        entity.getId(),
+                        entity.position()));
+
         portal.onEntityTeleportedOnServer(entity);
         
         ScaleUtils.onServerEntityTeleported(entity, portal);

@@ -1,6 +1,7 @@
 package qouteall.imm_ptl.core.compat;
 
 import net.fabricmc.loader.api.FabricLoader;
+
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -24,6 +25,7 @@ public class IPCompatMixinPlugin implements IMixinConfigPlugin {
         
         
         FabricLoader fabricLoader = FabricLoader.getInstance();
+        if (mixinClassName.contains("Gravity")) return fabricLoader.isModLoaded("gravity_changer");
         if (mixinClassName.contains("IrisSodium")) {
             boolean sodiumLoaded = fabricLoader.isModLoaded("sodium");
             boolean irisLoaded = fabricLoader.isModLoaded("iris");

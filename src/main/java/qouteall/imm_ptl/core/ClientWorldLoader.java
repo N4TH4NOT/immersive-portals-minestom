@@ -26,7 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import qouteall.dimlib.api.DimensionAPI;
+import qouteall.q_misc_util.dimension.DimensionLifecycle;
 import qouteall.imm_ptl.core.ducks.IECamera;
 import qouteall.imm_ptl.core.ducks.IEClientPlayNetworkHandler;
 import qouteall.imm_ptl.core.ducks.IEClientWorld;
@@ -37,7 +37,7 @@ import qouteall.imm_ptl.core.ducks.IEWorldRenderer;
 import qouteall.imm_ptl.core.mixin.client.accessor.IEClientLevelData;
 import qouteall.imm_ptl.core.mixin.client.accessor.IEClientLevel_Accessor;
 import qouteall.imm_ptl.core.portal.Portal;
-import qouteall.imm_ptl.core.render.context_management.DimensionRenderHelper;
+import qouteall.imm_ptl.core.render.NativeWorldRenderer;
 import qouteall.imm_ptl.core.render.context_management.PortalRendering;
 import qouteall.q_misc_util.Helper;
 import qouteall.q_misc_util.my_util.CountDownInt;
@@ -66,10 +66,9 @@ public class ClientWorldLoader {
         new Object2ObjectOpenHashMap<>();
     public static final Map<ResourceKey<Level>, LevelRenderer> WORLD_RENDERER_MAP =
         new Object2ObjectOpenHashMap<>();
-    public static final Map<ResourceKey<Level>, DimensionRenderHelper> RENDER_HELPER_MAP =
-        new Object2ObjectOpenHashMap<>();
-    
+
     public static @Nullable Map<ResourceKey<Level>, ResourceKey<DimensionType>> dimIdToDimTypeId;
+    public static Map<ResourceKey<Level>, Integer> seaLevels = Map.of();
     
     private static final Minecraft CLIENT = Minecraft.getInstance();
     
@@ -82,7 +81,7 @@ public class ClientWorldLoader {
     private static boolean isWorldSwitched = false;
     
     public static void init() {
-        DimensionAPI.CLIENT_DIMENSION_UPDATE_EVENT.register((serverDimensions) -> {
+        DimensionLifecycle.CLIENT_DIMENSION_UPDATE_EVENT.register((serverDimensions) -> {
             if (getIsInitialized()) {
                 List<ResourceKey<Level>> dimensionsToRemove =
                     CLIENT_WORLD_MAP.keySet().stream()
@@ -97,6 +96,7 @@ public class ClientWorldLoader {
         
         IPCGlobal.CLIENT_EXIT_EVENT.register(() -> {
             dimIdToDimTypeId = null;
+            seaLevels = Map.of();
         });
     }
     
@@ -109,54 +109,22 @@ public class ClientWorldLoader {
     }
     
     public static void tick() {
-        if (IPCGlobal.isClientRemoteTickingEnabled) {
-            isClientRemoteTicking = true;
-            CLIENT_WORLD_MAP.values().forEach(world -> {
-                if (CLIENT.level != world) {
-                    tickRemoteWorld(world);
-                }
-            });
-            WORLD_RENDERER_MAP.values().forEach(worldRenderer -> {
-                if (worldRenderer != CLIENT.levelRenderer) {
-                    worldRenderer.tick();
-                }
-            });
-            isClientRemoteTicking = false;
-        }
-        
-        boolean lightmapTextureConflict = false;
-        for (DimensionRenderHelper helper : RENDER_HELPER_MAP.values()) {
-            helper.tick();
-            if (helper.world != CLIENT.level) {
-                if (helper.lightmapTexture == CLIENT.gameRenderer.lightTexture()) {
-                    assert CLIENT.level != null;
-                    LOGGER.info(
-                        "Lightmap Texture Conflict {} {}",
-                        helper.world.dimension().location(),
-                        CLIENT.level.dimension().location()
-                    );
-                    lightmapTextureConflict = true;
-                }
+        if (!isInitialized || CLIENT.getConnection() == null || !IPCGlobal.isClientRemoteTickingEnabled) return;
+        isClientRemoteTicking = true;
+        try {
+            for (ClientLevel world : List.copyOf(CLIENT_WORLD_MAP.values())) {
+                if (world != CLIENT.level) tickRemoteWorld(world);
             }
-        }
-        if (lightmapTextureConflict) {
-            disposeRenderHelpers();
-            LOGGER.info("Refreshed Lightmaps");
-        }
-        
+        } finally { isClientRemoteTicking = false; }
     }
-    
-    public static void disposeRenderHelpers() {
-        RENDER_HELPER_MAP.values().forEach(DimensionRenderHelper::cleanUp);
-        RENDER_HELPER_MAP.clear();
-    }
-    
+
     private static void tickRemoteWorld(ClientLevel newWorld) {
         List<Portal> nearbyPortals = CHelper.getClientNearbyPortals(10).collect(Collectors.toList());
         
         withSwitchedWorld(newWorld, () -> {
             try {
                 newWorld.tickEntities();
+                NativeWorldRenderer.particles(newWorld).tick();
                 newWorld.tick(() -> true);
                 
                 if (!CLIENT.isPaused()) {
@@ -206,28 +174,11 @@ public class ClientWorldLoader {
     }
     
     public static void cleanUp() {
-        WORLD_RENDERER_MAP.values().forEach(
-            ClientWorldLoader::disposeWorldRenderer
-        );
-        
-        for (ClientLevel clientWorld : CLIENT_WORLD_MAP.values()) {
-            ((IEClientWorld) clientWorld).ip_resetWorldRendererRef();
-        }
-        
+        NativeWorldRenderer.close();
         CLIENT_WORLD_MAP.clear();
         WORLD_RENDERER_MAP.clear();
-        
-        disposeRenderHelpers();
-        
+
         isInitialized = false;
-    }
-    
-    private static void disposeWorldRenderer(LevelRenderer worldRenderer) {
-        worldRenderer.setLevel(null);
-        if (worldRenderer != CLIENT.levelRenderer) {
-            worldRenderer.close();
-            ((IEWorldRenderer) worldRenderer).portal_fullyDispose();
-        }
     }
     
     private static void disposeDimensionDynamically(ResourceKey<Level> dimension) {
@@ -244,7 +195,7 @@ public class ClientWorldLoader {
         Validate.isTrue(CLIENT.isSameThread(), "not on client thread");
         
         LevelRenderer worldRenderer = WORLD_RENDERER_MAP.get(dimension);
-        disposeWorldRenderer(worldRenderer);
+        NativeWorldRenderer.remove(dimension);
         WORLD_RENDERER_MAP.remove(dimension);
         
         Validate.isTrue(CLIENT.levelRenderer != worldRenderer);
@@ -253,12 +204,7 @@ public class ClientWorldLoader {
         ((IEClientWorld) clientWorld).ip_resetWorldRendererRef();
         CLIENT_WORLD_MAP.remove(dimension);
         
-        DimensionRenderHelper renderHelper = RENDER_HELPER_MAP.remove(dimension);
-        if (renderHelper != null) {
-            renderHelper.cleanUp();
-        }
-        
-        LOGGER.info("Client Dynamically Removed Dimension {}", dimension.location());
+        LOGGER.info("Client Dynamically Removed Dimension {}", dimension.identifier());
         
         if (clientWorld.getChunkSource().getLoadedChunksCount() > 0) {
             LOGGER.error("The chunks of that dimension was not cleared before removal");
@@ -336,23 +282,6 @@ public class ClientWorldLoader {
         return null;
     }
     
-    public static DimensionRenderHelper getDimensionRenderHelper(ResourceKey<Level> dimension) {
-        initializeIfNeeded();
-        
-        DimensionRenderHelper result = RENDER_HELPER_MAP.computeIfAbsent(
-            dimension,
-            dimensionType -> {
-                return new DimensionRenderHelper(
-                    getWorld(dimension)
-                );
-            }
-        );
-        
-        Validate.isTrue(result.world.dimension() == dimension);
-        
-        return result;
-    }
-    
     @SuppressWarnings("ConstantValue")
     public static void initializeIfNeeded() {
         if (!isInitialized) {
@@ -376,11 +305,8 @@ public class ClientWorldLoader {
             ResourceKey<Level> playerDimension = CLIENT.level.dimension();
             CLIENT_WORLD_MAP.put(playerDimension, CLIENT.level);
             WORLD_RENDERER_MAP.put(playerDimension, CLIENT.levelRenderer);
-            RENDER_HELPER_MAP.put(
-                CLIENT.level.dimension(),
-                new DimensionRenderHelper(CLIENT.level)
-            );
-            
+            NativeWorldRenderer.registerCurrentWorld();
+
             isInitialized = true;
         }
     }
@@ -397,22 +323,18 @@ public class ClientWorldLoader {
         
         isCreatingClientWorld = true;
         
-        CLIENT.getProfiler().push("create_world");
+        net.minecraft.util.profiling.Profiler.get().push("create_world");
         
         int chunkLoadDistance = 3; // my own chunk manager doesn't need it
         
-        LevelRenderer worldRenderer = new LevelRenderer(
-            CLIENT,
-            CLIENT.getEntityRenderDispatcher(),
-            CLIENT.getBlockEntityRenderDispatcher(),
-            CLIENT.renderBuffers()
-        );
-        
+        NativeWorldRenderer.Scene scene = NativeWorldRenderer.createPrimaryScene();
+        LevelRenderer worldRenderer = scene.renderer;
+
         ClientLevel newWorld;
         try {
             ClientPacketListener mainNetHandler = CLIENT.player.connection;
             assert CLIENT.level != null;
-            Map<String, MapItemSavedData> mapData = ((IEClientLevel_Accessor) CLIENT.level).ip_getMapData();
+            Map<net.minecraft.world.level.saveddata.maps.MapId, MapItemSavedData> mapData = ((IEClientLevel_Accessor) CLIENT.level).ip_getMapData();
             
             Validate.notNull(
                 dimIdToDimTypeId, "dimension type mapping is missing"
@@ -449,10 +371,10 @@ public class ClientWorldLoader {
                 dimensionType,
                 chunkLoadDistance,
                 simulationDistance,// seems that client world does not use this
-                CLIENT::getProfiler,
-                worldRenderer,
+                scene.extractor,
                 CLIENT.level.isDebug(),
-                CLIENT.level.getBiomeManager().biomeZoomSeed
+                CLIENT.level.getBiomeManager().biomeZoomSeed,
+                seaLevels.getOrDefault(dimension, CLIENT.level.getSeaLevel())
             );
             
             // all worlds share the same map data map
@@ -461,9 +383,9 @@ public class ClientWorldLoader {
             // all worlds share the same tick rate manager
             ((IEClientWorld) newWorld).ip_setTickRateManager(CLIENT.level.tickRateManager());
             
-            worldRenderer.setLevel(newWorld);
-            
-            worldRenderer.onResourceManagerReload(CLIENT.getResourceManager());
+            scene.attach(newWorld);
+            NativeWorldRenderer.registerPrimary(newWorld, scene);
+            scene.extractor.onResourceManagerReload(CLIENT.getResourceManager());
             
             CLIENT_WORLD_MAP.put(dimension, newWorld);
             WORLD_RENDERER_MAP.put(dimension, worldRenderer);
@@ -478,7 +400,7 @@ public class ClientWorldLoader {
         }
         finally {
             isCreatingClientWorld = false;
-            CLIENT.getProfiler().pop();
+            net.minecraft.util.profiling.Profiler.get().pop();
         }
         
         CLIENT_WORLD_LOAD_EVENT.invoker().accept(newWorld);
@@ -529,7 +451,7 @@ public class ClientWorldLoader {
                 () -> {
                     // cannot be replaced into method reference
                     // because levelRenderer field is actually mutable
-                    CLIENT.levelRenderer.allChanged();
+                    CLIENT.levelExtractor.allChanged();
                 }
             );
         }
@@ -543,45 +465,12 @@ public class ClientWorldLoader {
     @SuppressWarnings({"ReassignedVariable", "DataFlowIssue"})
     public static <T> T withSwitchedWorld(ClientLevel newWorld, Supplier<T> supplier) {
         Validate.isTrue(CLIENT.isSameThread(), "not on client thread");
-        Validate.isTrue(CLIENT.player != null, "player is null");
-        
-        ClientPacketListener networkHandler = CLIENT.getConnection();
-        assert networkHandler != null;
-        
-        ClientLevel originalWorld = CLIENT.level;
-        LevelRenderer originalWorldRenderer = CLIENT.levelRenderer;
-        ClientLevel originalNetHandlerWorld = networkHandler.getLevel();
-        boolean originalIsWorldSwitched = isWorldSwitched;
-        
-        LevelRenderer newWorldRenderer = getWorldRenderer(newWorld.dimension());
-        
-        Validate.notNull(newWorldRenderer, "new world renderer is null");
-        
-        CLIENT.level = newWorld;
-        ((IEParticleManager) CLIENT.particleEngine).ip_setWorld(newWorld);
-        ((IEMinecraftClient) CLIENT).ip_setWorldRenderer(newWorldRenderer);
-        ((IEClientPlayNetworkHandler) networkHandler).ip_setWorld(newWorld);
+        boolean previous = isWorldSwitched;
         isWorldSwitched = true;
-        
-        try {
-            return supplier.get();
-        }
-        finally {
-            if (CLIENT.level != newWorld) {
-                LOGGER.error("Respawn packet should not be redirected");
-                originalWorld = CLIENT.level;
-                originalWorldRenderer = CLIENT.levelRenderer;
-                // client.levelRenderer is not final by mixin.
-            }
-            
-            CLIENT.level = originalWorld;
-            ((IEMinecraftClient) CLIENT).ip_setWorldRenderer(originalWorldRenderer);
-            ((IEParticleManager) CLIENT.particleEngine).ip_setWorld(originalWorld);
-            ((IEClientPlayNetworkHandler) networkHandler).ip_setWorld(originalNetHandlerWorld);
-            isWorldSwitched = originalIsWorldSwitched;
-        }
+        try { return NativeWorldRenderer.withWorld(newWorld, supplier); }
+        finally { isWorldSwitched = previous; }
     }
-    
+
     public static void withSwitchedWorld(ClientLevel newWorld, Runnable runnable) {
         withSwitchedWorld(newWorld, () -> {
             runnable.run();
@@ -619,7 +508,7 @@ public class ClientWorldLoader {
                 Identifier id = McHelper.newIdentifier(entry.getKey());
                 int expectedId = entry.getValue();
                 
-                if (biomes.getId(biomes.get(id)) != expectedId) {
+                if (biomes.getId(biomes.getValue(id)) != expectedId) {
                     LOGGER.error("Biome id mismatch: {} {}", id, expectedId);
                 }
             }

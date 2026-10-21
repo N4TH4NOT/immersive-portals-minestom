@@ -90,8 +90,6 @@
     "client.interaction.MixinItem_Interaction_Client",
     "client.interaction.MixinMinecraft_B",
     "client.interaction.MixinMultiPlayerGameMode",
-    "client.multiworld_awareness.MixinBiomeAmbientSoundPlayer",
-    "client.multiworld_awareness.MixinFogRenderer",
     "client.particle.IEParticle",
     "client.particle.MixinParticleEngine",
     "client.render.IERenderSystem",
@@ -132,7 +130,10 @@
     "client.sync.MixinServerboundMovePlayerPacketPos",
     "client.sync.MixinServerBoundMovePlayerPacketPosRot",
     "client.sync.MixinServerboundMovePlayerPacketRot",
-    "client.sync.MixinServerboundMovePlayerPacketStatusOnly"
+    "client.sync.MixinServerboundMovePlayerPacketStatusOnly",
+    "client.render.NativeCameraAccess",
+    "client.render.NativeGameRendererAccess",
+    "client.render.NativeLevelExtractorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

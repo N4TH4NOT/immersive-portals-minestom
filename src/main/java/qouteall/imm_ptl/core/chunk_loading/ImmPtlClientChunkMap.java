@@ -70,16 +70,17 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
         
 //        LOGGER.info("unload {} {}", level, chunkPos);
         
-        LevelChunk chunk = chunkMapForMainThread.get(chunkPos.toLong());
+        LevelChunk chunk = chunkMapForMainThread.get(chunkPos.pack());
         if (chunk != null) {
             modifyChunkMap(chunkMap -> {
-                chunkMap.remove(chunkPos.toLong());
+                chunkMap.remove(chunkPos.pack());
             });
             
             O_O.postClientChunkUnloadEvent(chunk);
             this.level.unload(chunk);
-            SodiumInterface.invoker.onClientChunkUnloaded(level, chunkPos.x, chunkPos.z);
+            SodiumInterface.invoker.onClientChunkUnloaded(level, chunkPos.x(), chunkPos.z());
             clientChunkUnloadSignal.emit(chunk);
+            qouteall.imm_ptl.core.render.NativeWorldRenderer.chunkChanged(level, chunkPos.pack(), false);
         }
     }
     
@@ -139,7 +140,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     @Override
     public LevelChunk replaceWithPacketData(
         int x, int z,
-        FriendlyByteBuf buf, CompoundTag nbt,
+        FriendlyByteBuf buf, java.util.Map<net.minecraft.world.level.levelgen.Heightmap.Types, long[]> nbt,
         Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
     ) {
         Validate.isTrue(Thread.currentThread() == mainThread);
@@ -163,6 +164,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
         O_O.postClientChunkLoadEvent(worldChunk);
         SodiumInterface.invoker.onClientChunkLoaded(level, x, z);
         clientChunkLoadSignal.emit(worldChunk);
+        qouteall.imm_ptl.core.render.NativeWorldRenderer.chunkChanged(level, chunkPosLong, true);
         
 //        LOGGER.info("load {} {} {}", level, x, z);
         
@@ -175,7 +177,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
      */
     private void loadChunkDataFromPacket(
         FriendlyByteBuf buf,
-        CompoundTag nbt,
+        java.util.Map<net.minecraft.world.level.levelgen.Heightmap.Types, long[]> nbt,
         LevelChunk worldChunk,
         Consumer<ClientboundLevelChunkPacketData.BlockEntityTagOutput> consumer
     ) {
@@ -193,7 +195,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
                 Component
                     .literal("Failed to deserialize chunk packet. %s %s %s".formatted(
                         worldChunk.getLevel().dimension().identifier(),
-                        worldChunk.getPos().x, worldChunk.getPos().z
+                        worldChunk.getPos().x(), worldChunk.getPos().z()
                     ))
                     .append(Component.literal(" Report issue:"))
                     .append(McHelper.getLinkText(O_O.getIssueLink()))
@@ -234,7 +236,7 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
     
     @Override
     public void onLightUpdate(LightLayer lightType, SectionPos chunkSectionPos) {
-        ClientWorldLoader.getWorldRenderer(level.dimension())
+        qouteall.imm_ptl.core.render.NativeWorldRenderer.primary(level).extractor
             .setSectionDirty(chunkSectionPos.x(), chunkSectionPos.y(), chunkSectionPos.z());
     }
     

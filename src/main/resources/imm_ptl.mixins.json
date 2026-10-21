@@ -111,7 +111,8 @@
     "client.render.NativeGameRendererAccess",
     "client.particle.NativeParticleEngineAccess",
     "client.render.NativeLevelExtractorMixin",
-    "client.particle.NativeQuadParticleMixin"
+    "client.particle.NativeQuadParticleMixin",
+    "client.render.optimization.MixinFrustum"
   ],
   "injectors": {
     "defaultRequire": 1

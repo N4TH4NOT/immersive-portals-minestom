@@ -1,5 +1,7 @@
 package qouteall.imm_ptl.core.mixin.client.render;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -17,10 +19,24 @@ import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.ducks.IEEntity;
 import qouteall.imm_ptl.core.render.*;
 
-@Mixin(LevelExtractor.class)
+@Mixin(value = LevelExtractor.class, priority = 1100)
 public abstract class NativeLevelExtractorMixin {
     @Shadow private ClientLevel level;
     @Shadow @Final private LevelRenderState levelRenderState;
+
+    @ModifyExpressionValue(
+            method = "extract",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/client/renderer/SectionOcclusionGraph;consumeFrustumUpdate()Z"))
+    private boolean ip_animatedFrustum(boolean original) {
+        // Portal apertures and oblique views change independently of the camera's Euler angles.
+        return original
+                || NativeWorldRenderer.isRenderingScene()
+                || qouteall.imm_ptl.core.IPGlobal.alwaysOverrideTerrainSetup;
+    }
 
     @Inject(method = "extract", at = @At("RETURN"))
     private void ip_extract(DeltaTracker delta, Camera camera, float partial, CallbackInfo ci) {
@@ -39,9 +55,12 @@ public abstract class NativeLevelExtractorMixin {
         if (((IEEntity) entity).ip_getCollidingPortal() != null) cir.setReturnValue(false);
     }
 
-    @Inject(method = "setSectionDirty(III)V", at = @At("RETURN"))
-    private void ip_dirty(int x, int y, int z, CallbackInfo ci) {
-        NativeWorldRenderer.markSectionDirty((LevelExtractor) (Object) this, level, x, y, z);
+    @Inject(method = "setSectionDirty(IIIZ)V", at = @At("HEAD"))
+    private void ip_dirty(int x, int y, int z, boolean playerChanged, CallbackInfo ci) {
+        // Neighbor/range updates call this overload directly. Run before Sodium can
+        // cancel vanilla processing, so every view of the same world is invalidated.
+        if (level != null)
+            NativeWorldRenderer.markSectionDirty((LevelExtractor) (Object) this, level, x, y, z);
     }
 
     @Inject(method = "onResourceManagerReload", at = @At("RETURN"))

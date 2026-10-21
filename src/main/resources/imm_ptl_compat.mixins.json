@@ -5,9 +5,6 @@
   "plugin": "qouteall.imm_ptl.core.compat.IPCompatMixinPlugin",
   "mixins": [
     "cardinal_comp.MixinCardinalCompComponentKey",
-    "flywheel.MixinFlywheelCrumblingRenderer",
-    "flywheel.MixinFlywheelProgramCompiler",
-    "flywheel.MixinFlywheelQuadConverter",
     "iris.MixinIrisClearPass",
     "iris.MixinIrisFinalPassRenderer",
     "iris.MixinIrisIris",

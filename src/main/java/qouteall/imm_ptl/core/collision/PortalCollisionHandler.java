@@ -76,7 +76,7 @@ public class PortalCollisionHandler {
             return attemptedMove;
         }
         
-        entity.level().getProfiler().push("cross_portal_collision");
+        net.minecraft.util.profiling.Profiler.get().push("cross_portal_collision");
         
         portalCollisions.sort(
             Comparator.comparingLong((PortalCollisionEntry p) -> p.activeTime).reversed()
@@ -84,7 +84,7 @@ public class PortalCollisionHandler {
         
         Vec3 result = doHandleCollision(entity, attemptedMove, 1, portalCollisions, entity.getBoundingBox());
         
-        entity.level().getProfiler().pop();
+        net.minecraft.util.profiling.Profiler.get().pop();
         
         return result;
     }

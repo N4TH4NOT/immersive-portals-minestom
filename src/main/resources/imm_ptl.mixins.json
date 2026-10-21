@@ -56,7 +56,6 @@
     "common.mc_util.MixinEntity_U",
     "common.mc_util.MixinEntitySection",
     "common.mc_util.MixinEntitySectionStorage",
-    "common.miscellaneous.IEEndDragonFight",
     "common.miscellaneous.MixinBlockGetter",
     "common.miscellaneous.MixinEnderDragon",
     "common.miscellaneous.MixinFishingHook",
@@ -77,7 +76,8 @@
     "common.position_sync.MixinServerboundMovePlayerPacketRot",
     "common.position_sync.MixinServerboundMovePlayerPacketStatusOnly",
     "common.position_sync.MixinServerGamePacketListenerImpl",
-    "common.registry.IERegistryDataLoader"
+    "common.registry.IERegistryDataLoader",
+    "common.miscellaneous.IEEnderDragonFight"
   ],
   "client": [
     "client.MixinAbstractClientPlayer",

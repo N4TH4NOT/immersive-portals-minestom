@@ -2,7 +2,7 @@ package qouteall.imm_ptl.core.portal;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.object.builder.v1.block.FabricBlockSettings;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockGetter;
@@ -51,8 +51,8 @@ public class PortalPlaceholderBlock extends Block {
     );
     
     public static final PortalPlaceholderBlock instance = new PortalPlaceholderBlock(
-        FabricBlockSettings.create()
-            .noCollission()
+        BlockBehaviour.Properties.of().setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.BLOCK, net.minecraft.resources.Identifier.fromNamespaceAndPath("immersive_portals", "nether_portal_block")))
+            .noCollision()
             .sound(SoundType.GLASS)
             .strength(1.0f, 0)
             .noOcclusion()
@@ -90,19 +90,15 @@ public class PortalPlaceholderBlock extends Block {
     }
     
     @Override
-    public BlockState updateShape(
-        BlockState thisState,
-        Direction direction,
-        BlockState neighborState,
-        LevelAccessor worldAccess,
-        BlockPos blockPos,
-        BlockPos neighborPos
+    public BlockState updateShape(BlockState thisState, net.minecraft.world.level.LevelReader worldAccess,
+        net.minecraft.world.level.ScheduledTickAccess ticks, BlockPos blockPos, Direction direction,
+        BlockPos neighborPos, BlockState neighborState, net.minecraft.util.RandomSource random
     ) {
         if (!worldAccess.isClientSide()) {
             if (worldAccess instanceof Level) {
                 Level world = (Level) worldAccess;
                 
-                world.getProfiler().push("portal_placeholder");
+                net.minecraft.util.profiling.Profiler.get().push("portal_placeholder");
                 
                 Direction.Axis axis = thisState.getValue(AXIS);
                 if (direction.getAxis() != axis) {
@@ -119,18 +115,11 @@ public class PortalPlaceholderBlock extends Block {
                     );
                 }
                 
-                world.getProfiler().pop();
+                net.minecraft.util.profiling.Profiler.get().pop();
             }
         }
         
-        return super.updateShape(
-            thisState,
-            direction,
-            neighborState,
-            worldAccess,
-            blockPos,
-            neighborPos
-        );
+        return super.updateShape(thisState, worldAccess, ticks, blockPos, direction, neighborPos, neighborState, random);
     }
     
     public static boolean isHitOnPlaceholder(HitResult hitResult, Level world) {
@@ -145,11 +134,7 @@ public class PortalPlaceholderBlock extends Block {
     
     //---------These are copied from BlockBarrier
     @Override
-    public boolean propagatesSkylightDown(
-        BlockState blockState_1,
-        BlockGetter blockView_1,
-        BlockPos blockPos_1
-    ) {
+    public boolean propagatesSkylightDown(BlockState state) {
         return true;
     }
     

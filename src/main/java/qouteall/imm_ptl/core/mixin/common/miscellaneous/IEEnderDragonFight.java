@@ -1,15 +1,16 @@
 package qouteall.imm_ptl.core.mixin.common.miscellaneous;
 
-import net.minecraft.world.level.dimension.end.EndDragonFight;
+import net.minecraft.world.level.dimension.end.EnderDragonFight;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 import org.spongepowered.asm.mixin.gen.Invoker;
 
-@Mixin(EndDragonFight.class)
-public interface IEEndDragonFight {
+@Mixin(EnderDragonFight.class)
+public interface IEEnderDragonFight {
     @Accessor("needsStateScanning")
     boolean ip_getNeedsStateScanning();
-    
+
     @Invoker("scanState")
     void ip_scanState();
 }

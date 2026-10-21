@@ -183,7 +183,7 @@ public class PortalAPI {
         McHelper.sendToTrackers(
             entity,
             PacketRedirection.createRedirectedMessage(
-                entity.getServer(),
+                entity.level().getServer(),
                 entity.level().dimension(),
                 packet
             )

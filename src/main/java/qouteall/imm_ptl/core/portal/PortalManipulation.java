@@ -88,7 +88,7 @@ public class PortalManipulation {
     public static <T extends Portal> T createReversePortal(Portal portal, EntityType<T> entityType) {
         Level world = portal.getDestinationWorld();
         
-        T newPortal = entityType.create(world);
+        T newPortal = entityType.create(world, net.minecraft.world.entity.EntitySpawnReason.LOAD);
         assert newPortal != null;
         newPortal.setDestDim(portal.level().dimension());
         newPortal.setPos(portal.getDestPos().x, portal.getDestPos().y, portal.getDestPos().z);
@@ -131,7 +131,7 @@ public class PortalManipulation {
     
     public static <T extends Portal> T createFlippedPortal(Portal portal, EntityType<T> entityType) {
         Level world = portal.level();
-        T newPortal = entityType.create(world);
+        T newPortal = entityType.create(world, net.minecraft.world.entity.EntitySpawnReason.LOAD);
         assert newPortal != null;
         newPortal.setDestDim(portal.getDestDim());
         newPortal.setPos(portal.getX(), portal.getY(), portal.getZ());
@@ -158,7 +158,7 @@ public class PortalManipulation {
     //the new portal will not be added into world
     public static Portal copyPortal(Portal portal, EntityType<Portal> entityType) {
         Level world = portal.level();
-        Portal newPortal = entityType.create(world);
+        Portal newPortal = entityType.create(world, net.minecraft.world.entity.EntitySpawnReason.LOAD);
         newPortal.setDestDim(portal.getDestDim());
         newPortal.setPos(portal.getX(), portal.getY(), portal.getZ());
         newPortal.setDestination(portal.getDestPos());
@@ -253,7 +253,7 @@ public class PortalManipulation {
         Direction facing, AABB portalArea,
         Vec3 destination
     ) {
-        T portal = entityType.create(fromWorld);
+        T portal = entityType.create(fromWorld, net.minecraft.world.entity.EntitySpawnReason.LOAD);
         
         PortalAPI.setPortalOrthodoxShape(portal, facing, portalArea);
         

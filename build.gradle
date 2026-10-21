@@ -21,6 +21,8 @@ dependencies {
     compileOnly "maven.modrinth:modmenu:${modmenu_version}"
     compileOnly "${sodium_path}"
     compileOnly "${iris_path}"
+    if (providers.gradleProperty('portalSmokeSodium').isPresent() || providers.gradleProperty('portalSmokeIris').isPresent()) runtimeOnly "${sodium_path}"
+    if (providers.gradleProperty('portalSmokeIris').isPresent()) runtimeOnly "${iris_path}"
     testImplementation platform('org.junit:junit-bom:5.14.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -41,4 +43,61 @@ test { useJUnitPlatform() }
 jar { from('LICENSE') { rename { "${it}_${project.base.archivesName.get()}" } } }
 publishing {
     publications { mavenJava(MavenPublication) { from components.java } }
+}
+
+// Opt-in local runtime verification; these classes are never packaged in the mod.
+if (providers.gradleProperty('portalSmoke').isPresent()) {
+    sourceSets {
+        smokeTest {
+            compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+            runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+        }
+    }
+    def prepareServer = tasks.register('preparePortalSmokeServer') {
+        doLast {
+            def config = file('run/smoke-server/server.properties')
+            if (!config.exists()) {
+                config.parentFile.mkdirs()
+                config.text = file('src/smokeTest/resources/server.properties').text
+            }
+        }
+    }
+    tasks.named('runServer') { dependsOn prepareServer }
+    loom {
+        mods {
+            immersive_portals { sourceSet sourceSets.main }
+            imm_ptl_smoke { sourceSet sourceSets.smokeTest }
+        }
+        runs {
+            client {
+                source sourceSets.smokeTest
+                runDir 'run/smoke-client'
+                programArgs '--quickPlayMultiplayer', '127.0.0.1:25567'
+                vmArg '-DportalSmoke.address=' + providers.gradleProperty('portalSmokeAddress').getOrElse('127.0.0.1:25567')
+                vmArg '-DportalSmoke.target=' + providers.gradleProperty('portalSmokeTarget').getOrElse('minecraft:the_nether')
+                vmArg '-DportalSmoke.interaction=' + providers.gradleProperty('portalSmokeInteraction').getOrElse('false')
+            }
+            server { source sourceSets.smokeTest; runDir 'run/smoke-server' }
+        }
+    }
+    if (providers.gradleProperty('portalSmokeIris').isPresent()) {
+        def prepareShaders = tasks.register('preparePortalSmokeShaders') {
+            inputs.dir 'src/smokeTest/shaders'
+            outputs.dir 'run/smoke-client/shaderpacks/PortalSmoke'
+            outputs.file 'run/smoke-client/config/iris.properties'
+            doLast {
+                def shaders = file('run/smoke-client/shaderpacks/PortalSmoke/shaders')
+                shaders.mkdirs()
+                ['terrain', 'entities', 'hand', 'hand_water', 'water', 'block', 'textured', 'textured_lit', 'basic'].each { program ->
+                    new File(shaders, "gbuffers_${program}.vsh").text = file('src/smokeTest/shaders/gbuffers_terrain.vsh').text
+                    new File(shaders, "gbuffers_${program}.fsh").text = file("src/smokeTest/shaders/gbuffers_${program == 'basic' ? 'basic' : 'terrain'}.fsh").text
+                }
+                new File(shaders, 'shaders.properties').text = file('src/smokeTest/shaders/shaders.properties').text
+                def config = file('run/smoke-client/config/iris.properties')
+                config.parentFile.mkdirs()
+                config.text = 'enableShaders=true\nshaderPack=PortalSmoke\n'
+            }
+        }
+        tasks.named('runClient') { dependsOn prepareShaders }
+    }
 }

@@ -23,4 +23,4 @@ pluginManagement {
 }
 
 rootProject.name = "immersive-portals-minestom"
-include "portal-protocol", "minestom"
+include "portal-protocol", "minestom", "minestom-example"

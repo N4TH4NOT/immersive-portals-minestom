@@ -16,9 +16,56 @@ import qouteall.imm_ptl.core.portal.PortalManipulation;
 public final class PortalSmoke implements ModInitializer {
     private final java.util.Map<java.util.UUID, Long> arrived = new java.util.HashMap<>();
     private final java.util.Map<java.util.UUID, Boolean> pending = new java.util.HashMap<>();
+    private final java.util.Set<java.util.UUID> scenePortals = new java.util.HashSet<>();
 
     @Override
     public void onInitialize() {
+        net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register(
+                (dispatcher, access, environment) ->
+                        dispatcher.register(
+                                net.minecraft.commands.Commands.literal("portal_smoke_wall")
+                                        .requires(
+                                                source ->
+                                                        source.getPlayer() != null
+                                                                && source.getPlayer()
+                                                                        .getGameProfile()
+                                                                        .name()
+                                                                        .equals("OcclusionTest"))
+                                        .then(
+                                                net.minecraft.commands.Commands.argument(
+                                                                "closed",
+                                                                com.mojang.brigadier.arguments
+                                                                        .BoolArgumentType.bool())
+                                                        .executes(
+                                                                context -> {
+                                                                    boolean closed =
+                                                                            com.mojang.brigadier
+                                                                                    .arguments
+                                                                                    .BoolArgumentType
+                                                                                    .getBool(
+                                                                                            context,
+                                                                                            "closed");
+                                                                    for (int x = -3; x <= 3; x++)
+                                                                        for (int y = 70;
+                                                                                y <= 76;
+                                                                                y++)
+                                                                            context.getSource()
+                                                                                    .getServer()
+                                                                                    .overworld()
+                                                                                    .setBlock(
+                                                                                            new BlockPos(
+                                                                                                    x,
+                                                                                                    y,
+                                                                                                    2),
+                                                                                            (closed
+                                                                                                            ? Blocks
+                                                                                                                    .STONE
+                                                                                                            : Blocks
+                                                                                                                    .AIR)
+                                                                                                    .defaultBlockState(),
+                                                                                            3);
+                                                                    return 1;
+                                                                }))));
         ServerLifecycleEvents.SERVER_STARTED.register(
                 server -> {
                     var from = server.overworld();
@@ -98,6 +145,9 @@ public final class PortalSmoke implements ModInitializer {
                     var fused = extra(from, to, new Vec3(-3.75, 75.5, 0), 3, 2);
                     fused.setFuseView(true);
                     from.addFreshEntity(fused);
+                    for (Portal fixture :
+                            java.util.List.of(portal, reverse, triangle, box, mirror, fused))
+                        scenePortals.add(fixture.getUUID());
                     // Regression coverage for the inclusive region bound and negative world
                     // heights.
                     from.getChunk(-1, -1);
@@ -136,6 +186,19 @@ public final class PortalSmoke implements ModInitializer {
                 });
         ServerTickEvents.END_SERVER_TICK.register(
                 server -> {
+                    // Entity data in these fixture chunks may only load when a player arrives.
+                    // The automated scene owns this small region; keep older saved copies out.
+                    for (var world : server.getAllLevels()) {
+                        var stale = new java.util.ArrayList<Portal>();
+                        for (var entity : world.getAllEntities())
+                            if (entity instanceof Portal p
+                                    && Math.abs(p.getX()) <= 12
+                                    && Math.abs(p.getZ()) <= 12
+                                    && p.getY() >= 70
+                                    && p.getY() <= 78
+                                    && !scenePortals.contains(p.getUUID())) stale.add(p);
+                        stale.forEach(Portal::discard);
+                    }
                     for (var entry : java.util.List.copyOf(pending.entrySet())) {
                         var player = server.getPlayerList().getPlayer(entry.getKey());
                         if (player == null) {

@@ -17,7 +17,11 @@ final class PortalEntityTeleportation {
     private static final Key SCALE_MODIFIER = Key.key("iportal:scaling");
 
     static CompletableFuture<Void> teleport(
-            Entity entity, PortalDefinition portal, Instance target) {
+            Entity entity,
+            PortalDefinition portal,
+            Instance target,
+            PortalGravity gravity,
+            Vec3 sourceEye) {
         PortalOptions options = PortalOptions.of(portal);
         if (entity.isRemoved()
                 || portal.kind() != PortalDefinition.Kind.PORTAL
@@ -26,12 +30,17 @@ final class PortalEntityTeleportation {
         if (entity.getVehicle() != null || entity.hasPassenger())
             throw new IllegalStateException(
                     "Detach vehicles and passengers before teleporting individual entities");
-        Pos from = entity.getPosition();
         LivingEntity living = entity instanceof LivingEntity value ? value : null;
-        double oldScale = living == null ? 1 : living.getAttributeValue(Attribute.SCALE);
-        Vec3 eye = new Vec3(from.x(), from.y() + entity.getEyeHeight() * oldScale, from.z());
-        Vec3 destinationEye = portal.transformPoint(eye);
-        Vec3 direction = portal.rotation().rotate(vector(from.direction()));
+        Vec3 destinationEye = portal.transformPoint(sourceEye);
+        var oldGravity = gravity.get(entity);
+        var nextGravity =
+                living != null && options.changesGravity()
+                        ? oldGravity.rotated(portal.rotation())
+                        : oldGravity;
+        Vec3 direction =
+                nextGravity
+                        .direction()
+                        .toLocal(portal.rotation().rotate(gravity.lookDirection(entity)));
         Vec3 velocity = portal.transformVector(vector(entity.getVelocity()));
         AttributeInstance attribute = living == null ? null : living.getAttribute(Attribute.SCALE);
         var previous =
@@ -49,38 +58,56 @@ final class PortalEntityTeleportation {
                     new AttributeModifier(
                             SCALE_MODIFIER, factor - 1, AttributeOperation.ADD_MULTIPLIED_TOTAL));
         }
+        try {
+            if (living != null && !nextGravity.equals(oldGravity)) gravity.set(living, nextGravity);
+        } catch (RuntimeException error) {
+            if (attribute != null && options.changesScale()) {
+                attribute.removeModifier(SCALE_MODIFIER);
+                previous.ifPresent(attribute::addModifier);
+            }
+            throw error;
+        }
         double newScale = living == null ? 1 : living.getAttributeValue(Attribute.SCALE);
+        Vec3 feet =
+                destinationEye.subtract(
+                        nextGravity
+                                .direction()
+                                .toWorld(new Vec3(0, entity.getEyeHeight() * newScale, 0)));
         Pos position =
                 new Pos(
-                        destinationEye.x(),
-                        destinationEye.y() - entity.getEyeHeight() * newScale,
-                        destinationEye.z(),
+                        feet.x(),
+                        feet.y(),
+                        feet.z(),
                         (float) Math.toDegrees(Math.atan2(-direction.x(), direction.z())),
                         (float)
                                 -Math.toDegrees(
                                         Math.asin(Math.max(-1, Math.min(1, direction.y())))));
-        Runnable restoreScale =
+        Runnable restoreState =
                 () -> {
                     if (attribute != null && options.changesScale()) {
                         attribute.removeModifier(SCALE_MODIFIER);
                         previous.ifPresent(attribute::addModifier);
                     }
+                    if (living != null && !nextGravity.equals(oldGravity))
+                        gravity.restore(living, oldGravity);
                 };
         try {
             CompletableFuture<Void> transfer =
                     entity.getInstance() == target
                             ? entity.teleport(position)
                             : entity.setInstance(target, position);
+            if (transfer == null)
+                throw new IllegalStateException("Instance transfer was cancelled");
             return transfer.thenRun(
                             () ->
                                     entity.setVelocity(
                                             new Vec(velocity.x(), velocity.y(), velocity.z())))
                     .whenComplete(
                             (ignored, error) -> {
-                                if (error != null) restoreScale.run();
+                                if (error != null) restoreState.run();
                             });
         } catch (RuntimeException error) {
-            restoreScale.run();
+            restoreState.run();
             throw error;
         }
     }

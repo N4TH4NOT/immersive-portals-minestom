@@ -78,6 +78,13 @@ NBT native, notamment les animations. La géométrie de `PortalDefinition` garde
 priorité sur les champs géométriques homonymes de cette NBT. Les données sont
 copiées ; la sérialisation ne modifie pas les objets publiés.
 
+Cette NBT décrit les options du portail, pas les inventaires ni les données des
+entités Minestom. Un portail fixe n'a pas besoin de `nativeOptions`. Les pilotes
+d'animation natifs peuvent être transmis au client, mais le SDK ne les exécute
+pas côté serveur : pour un portail mobile, l'application doit aussi actualiser
+sa `PortalDefinition` avec `handle.update(...)` afin que les validations utilisent
+la position et la forme courantes.
+
 ## Connexions, vues et traversées
 
 Le service négocie automatiquement le protocole avec le mod à la première
@@ -92,6 +99,14 @@ positions, métadonnées, attributs et équipements. Utiliser
 serveur, par exemple sons, particules et changements spécifiques de block entity.
 Le paquet est encodé avec les registres du serveur et redirigé dans le bon monde
 client ; seuls les paquets locaux à un monde sont acceptés par le mod.
+
+Cela concerne aussi les particules **vanilla** : fumée, flammes, cœurs, etc.
+Créer leur paquet Minestom puis appeler `sendWorldPacket(instance, packet)` ;
+les joueurs disposant d'une vue distante de cette instance le reçoivent dans le
+bon monde. Cette méthode ne remplace pas l'envoi aux spectateurs présents dans
+l'instance. Une particule ajoutée par un mod nécessite également que le client
+connaisse son type et que le serveur fournisse l'encodage correspondant ; le
+pont n'enregistre pas automatiquement des types de particules supplémentaires.
 
 Les demandes du client sont traitées sur les ticks du service. Le serveur vérifie
 la position, le sens et l’ouverture traversée, les obstacles et la destination.
@@ -142,9 +157,29 @@ les règles de jeu de Minestom : le callback décide de l’action. Pour un cont
 l’application conserve aussi la responsabilité de sa validité pendant son
 ouverture et de sa fermeture si le bloc disparaît ou devient inaccessible.
 
-L’exemple traite la casse en créatif et l’ouverture d’un coffre distant. Le mod
-transmet les interactions de blocs à travers les portails ; le validateur du SDK
-accepte aussi les paquets d’interaction d’entités fournis par un client compatible.
+Le mod transmet les clics gauche/droit sur les blocs et les entités, avec le
+chemin réel de un à trois portails. Les obstacles et les portées de bloc et
+d'entité sont pris en compte séparément, ainsi que les changements d'échelle.
+Un bloc sans comportement par défaut déclenche aussi le callback. Les actions
+de blocs sont acquittées et leur état serveur est renvoyé, même si le callback
+ne fait rien, pour résoudre les modifications prédites par le client.
+
+L'exemple traite la casse en créatif et l'ouverture d'un coffre distant. Pour
+valider les callbacks sans leur associer d'action, lancer :
+
+```sh
+./gradlew :minestom-example:run -PportalSmokeInteractions=true
+./gradlew -PportalSmoke -PportalSmokeInteractions=true \
+  -PportalSmokeAddress=127.0.0.1:25566 -PportalSmokeTarget=demo:gallery \
+  runClient --args='--graphicsBackend vulkan --username InteractTest'
+```
+
+Le serveur doit afficher `MINESTOM_REMOTE_BLOCK_USE 2`,
+`MINESTOM_REMOTE_BLOCK_ATTACK 2`, `MINESTOM_REMOTE_ENTITY_USE_OK` et
+`MINESTOM_REMOTE_ENTITY_ATTACK_OK`. Le client vérifie aussi que la pierre reste
+présente après une casse refusée et termine la traversée. Les deux commandes
+s'exécutent dans deux terminaux, avec l'environnement graphique décrit dans
+`port-26.2.md`.
 
 ## Limites et nettoyage
 

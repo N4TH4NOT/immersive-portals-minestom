@@ -146,7 +146,7 @@ public class BlockManipulationServer {
             FriendlyByteBuf buf = IPMcHelper.bytesToBuf(packetBytes);
             ServerboundPlayerActionPacket packet = ServerboundPlayerActionPacket.STREAM_CODEC.decode(buf);
             
-            ServerLevel world = player.server.getLevel(dimension);
+            ServerLevel world = player.level().getServer().getLevel(dimension);
             Validate.notNull(world, "missing %s", dimension.identifier());
             
             withRedirect(
@@ -169,7 +169,7 @@ public class BlockManipulationServer {
             FriendlyByteBuf buf = IPMcHelper.bytesToBuf(packetBytes);
             ServerboundUseItemOnPacket packet = ServerboundUseItemOnPacket.STREAM_CODEC.decode(buf);
             
-            ServerLevel world = player.server.getLevel(dimension);
+            ServerLevel world = player.level().getServer().getLevel(dimension);
             Validate.notNull(world, "missing %s", dimension.identifier());
             
             withRedirect(
@@ -218,7 +218,7 @@ public class BlockManipulationServer {
         if (isAttackingAction(action)) {
             player.gameMode.handleBlockBreakAction(
                 blockPos, action, packet.getDirection(),
-                world.getMaxBuildHeight(), packet.getSequence()
+                world.getMaxY(), packet.getSequence()
             );
             player.connection.ackBlockChangesUpTo(packet.getSequence());
         }
@@ -264,7 +264,7 @@ public class BlockManipulationServer {
                 hand,
                 blockHitResult
             );
-            if (actionResult.shouldSwing()) {
+            if (actionResult instanceof net.minecraft.world.InteractionResult.Success success && success.swingSource() == net.minecraft.world.InteractionResult.SwingSource.SERVER) {
                 player.swing(hand, true);
             }
         }
@@ -276,7 +276,7 @@ public class BlockManipulationServer {
         );
         
         BlockPos offseted = blockPos.relative(direction);
-        if (offseted.getY() >= world.getMinBuildHeight() && offseted.getY() < world.getMaxBuildHeight()) {
+        if (offseted.getY() >= world.getMinY() && offseted.getY() < world.getMaxY()) {
             PacketRedirection.sendRedirectedMessage(
                 player,
                 dimension,

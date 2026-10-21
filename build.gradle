@@ -76,6 +76,7 @@ if (providers.gradleProperty('portalSmoke').isPresent()) {
                 vmArg '-DportalSmoke.address=' + providers.gradleProperty('portalSmokeAddress').getOrElse('127.0.0.1:25567')
                 vmArg '-DportalSmoke.target=' + providers.gradleProperty('portalSmokeTarget').getOrElse('minecraft:the_nether')
                 vmArg '-DportalSmoke.interaction=' + providers.gradleProperty('portalSmokeInteraction').getOrElse('false')
+                vmArg '-DportalSmoke.interactions=' + providers.gradleProperty('portalSmokeInteractions').getOrElse('false')
             }
             server { source sourceSets.smokeTest; runDir 'run/smoke-server' }
         }

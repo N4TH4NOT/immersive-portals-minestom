@@ -19,6 +19,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.apache.commons.lang3.Validate;
 import org.jetbrains.annotations.Nullable;
 import qouteall.imm_ptl.core.ClientWorldLoader;
+import qouteall.imm_ptl.core.network.bridge.BridgeClient;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.PortalPlaceholderBlock;
 import qouteall.imm_ptl.core.portal.PortalUtils;
@@ -64,6 +65,11 @@ public class BlockManipulationClient {
         remotePortalPath = java.util.List.of();
         
         if (!BlockManipulationServer.canDoCrossPortalInteractionEvent.invoker().test(client.player)) {
+            return;
+        }
+
+        if (BridgeClient.isActive()) {
+            RemoteInteractionClient.updateTarget(partialTick);
             return;
         }
         
@@ -123,17 +129,33 @@ public class BlockManipulationClient {
             cameraPos.add(viewVector.scale(endDistance))
         );
         
-        ClipContext context = new ClipContext(
-            from,
-            to,
-            ClipContext.Block.OUTLINE,
-            ClipContext.Fluid.NONE,
-            client.player
-        );
-        
         ClientLevel world = ClientWorldLoader.getWorld(portal.getDestDim());
-        
-        remoteHitResult = BlockGetter.traverseBlocks(
+
+        remoteHitResult = clipBlocks(world, from, to);
+
+        if (remoteHitResult.getLocation().y < world.getMinY() + 0.1) {
+            remoteHitResult = new BlockHitResult(
+                remoteHitResult.getLocation(),
+                Direction.DOWN,
+                ((BlockHitResult) remoteHitResult).getBlockPos(),
+                ((BlockHitResult) remoteHitResult).isInside()
+            );
+        }
+
+        if (remoteHitResult != null) {
+            if (!world.getBlockState(((BlockHitResult) remoteHitResult).getBlockPos()).isAir()) {
+                client.hitResult = createMissedHitResult(from, to);
+                remotePointedDim = portal.getDestDim();
+                remotePortalPath = java.util.List.of(portal.getUUID());
+            }
+        }
+    }
+
+    static BlockHitResult clipBlocks(ClientLevel world, Vec3 from, Vec3 to) {
+        ClipContext context = new ClipContext(
+            from, to, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, client.player
+        );
+        return BlockGetter.traverseBlocks(
             from, to,
             context,
             (rayTraceContext, blockPos) -> {
@@ -175,23 +197,12 @@ public class BlockManipulationClient {
             }
         );
         
-        if (remoteHitResult.getLocation().y < world.getMinY() + 0.1) {
-            remoteHitResult = new BlockHitResult(
-                remoteHitResult.getLocation(),
-                Direction.DOWN,
-                ((BlockHitResult) remoteHitResult).getBlockPos(),
-                ((BlockHitResult) remoteHitResult).isInside()
-            );
-        }
-        
-        if (remoteHitResult != null) {
-            if (!world.getBlockState(((BlockHitResult) remoteHitResult).getBlockPos()).isAir()) {
-                client.hitResult = createMissedHitResult(from, to);
-                remotePointedDim = portal.getDestDim();
-                remotePortalPath = java.util.List.of(portal.getUUID());
-            }
-        }
-        
+    }
+
+    public static boolean isRemoteEntity(net.minecraft.world.entity.Entity entity) {
+        return BridgeClient.isActive() && ClientWorldLoader.getIsWorldSwitched()
+            && remoteHitResult instanceof net.minecraft.world.phys.EntityHitResult hit
+            && hit.getEntity() == entity && !remotePortalPath.isEmpty();
     }
     
     /**

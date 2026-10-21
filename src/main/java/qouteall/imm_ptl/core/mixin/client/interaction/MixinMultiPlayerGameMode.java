@@ -111,6 +111,17 @@ public abstract class MixinMultiPlayerGameMode implements IEClientPlayerInteract
     private Packet redirectSendInStopDestroyBlock(Packet packet) {
         return ip_redirectPacket(packet);
     }
+
+    @ModifyArg(
+        method = {"attack", "interact"},
+        at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/multiplayer/ClientPacketListener;send(Lnet/minecraft/network/protocol/Packet;)V")
+    )
+    private Packet<?> ip_redirectEntityInteraction(Packet<?> packet) {
+        // Entity targeting is enabled by the bridge; Fabric retains its existing behavior.
+        if (qouteall.imm_ptl.core.network.bridge.BridgeClient.isActive()) return ip_redirectPacket(packet);
+        return packet;
+    }
     
     private static Packet<?> ip_redirectPacket(Packet<?> packet) {
         if (ClientWorldLoader.getIsWorldSwitched()) {

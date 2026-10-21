@@ -41,6 +41,7 @@ public final class BridgeClient {
                     "ClientboundLightUpdatePacket",
                     "ClientboundForgetLevelChunkPacket",
                     "ClientboundBlockUpdatePacket",
+                    "ClientboundBlockChangedAckPacket",
                     "ClientboundSectionBlocksUpdatePacket",
                     "ClientboundChunksBiomesPacket",
                     "ClientboundBlockEntityDataPacket",

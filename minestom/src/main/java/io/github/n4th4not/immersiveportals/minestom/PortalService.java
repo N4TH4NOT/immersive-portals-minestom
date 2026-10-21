@@ -220,6 +220,16 @@ public final class PortalService implements AutoCloseable {
         return events;
     }
 
+    CompletableFuture<Void> teleport(UUID id, Entity entity) {
+        ensureOpen();
+        PortalDefinition portal = find(id).orElseThrow(
+            () -> new IllegalStateException("Portal is no longer registered"));
+        World source = worlds.get(portal.sourceWorld()), target = worlds.get(portal.destinationWorld());
+        if (source == null || target == null || entity.getInstance() != source.instance())
+            throw new IllegalArgumentException("Entity must belong to the registered source instance");
+        return PortalEntityTeleportation.teleport(entity, portal, target.instance());
+    }
+
     private void validateWorlds(PortalDefinition d) {
         PortalOptions.of(d);
         if (!worlds.containsKey(d.sourceWorld()) || !worlds.containsKey(d.destinationWorld()))

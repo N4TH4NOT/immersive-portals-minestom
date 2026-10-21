@@ -99,10 +99,30 @@ Il applique rotation, vitesse et attribut `SCALE`, en préservant la valeur de b
 et les modificateurs des autres systèmes. Une demande de traversée refusée
 entraîne une correction de la prédiction cliente.
 
-La bibliothèque gère les traversées demandées par les joueurs. Les règles de jeu
-Minestom concernant les autres entités, leurs déplacements autonomes, les
-véhicules ou les inventaires restent sous le contrôle de l’application serveur.
-Le serveur Fabric conserve son gestionnaire complet de téléportation d’entités.
+La bibliothèque gère automatiquement les traversées demandées par les joueurs.
+Pour déplacer une entité depuis le code serveur, utiliser le portail enregistré :
+
+```java
+handle.teleport(entity).thenRun(() -> {
+    // Le transfert d'instance, la position des yeux, la rotation et la vitesse sont appliqués.
+});
+```
+
+Cette méthode applique également l'attribut `SCALE` aux entités vivantes, sans
+écraser les autres modificateurs. Elle déplace une entité située dans l'instance
+source du portail ; la même instance peut aussi servir de destination.
+L'application autorise explicitement ce déplacement : la méthode n'exige pas que
+l'entité touche l'ouverture. `handle.crosses(previousEyePosition, eyePosition)`
+permet de tester un déplacement contre la forme réelle avant de la téléporter.
+Ces deux positions sont les positions des yeux dans l'instance source, et non
+les positions des pieds. Détacher les véhicules et passagers avant de déplacer
+leurs entités individuelles. Un portail supprimé, désactivé ou de type miroir
+refuse la téléportation.
+
+L'API n'ajoute pas d'objectifs ou de déplacement autonome aux entités Minestom.
+Les règles de jeu, les groupes de passagers et les inventaires restent sous le
+contrôle de l'application serveur. Le serveur Fabric conserve son gestionnaire
+complet de téléportation d'entités.
 
 ## Interactions distantes
 

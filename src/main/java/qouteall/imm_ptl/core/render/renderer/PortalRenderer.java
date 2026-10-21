@@ -1,11 +1,11 @@
 package qouteall.imm_ptl.core.render.renderer;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-import net.minecraft.client.GraphicsStatus;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -87,7 +87,7 @@ public abstract class PortalRenderer {
         Supplier<Frustum> frustumSupplier = Helper.cached(() -> {
             Frustum frustum = new Frustum(
                 modelView,
-                RenderSystem.getProjectionMatrix()
+                qouteall.imm_ptl.core.render.NativeWorldRenderer.projection(client.gameRenderer)
             );
             
             Vec3 cameraPos = client.gameRenderer.mainCamera().position();
@@ -225,9 +225,8 @@ public abstract class PortalRenderer {
         
         PortalRendering.onEndPortalWorldRendering();
         
-        GlStateManager._enableDepthTest();
         
-        MyRenderHelper.restoreViewPort();
+        // Render-pass viewports are scoped by the native GPU API.
         
         
     }
@@ -313,13 +312,6 @@ public abstract class PortalRenderer {
         if (PortalRendering.isRendering()) {
             //do not switch when rendering
             return;
-        }
-        
-        if (Minecraft.getInstance().options.graphicsMode().get() == GraphicsStatus.FABULOUS) {
-            if (!fabulousWarned) {
-                fabulousWarned = true;
-                CHelper.printChat(Component.translatable("imm_ptl.fabulous_warning"));
-            }
         }
         
         IPModInfoChecking.checkShaderpack();

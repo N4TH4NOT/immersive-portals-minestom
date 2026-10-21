@@ -401,7 +401,7 @@ public class CollisionHelper {
     }
     
     public static void updateCollidingPortalForWorld(Level world, float partialTick) {
-        world.getProfiler().push("update_colliding_portal");
+        net.minecraft.util.profiling.Profiler.get().push("update_colliding_portal");
         
         List<Portal> globalPortals = GlobalPortalStorage.getGlobalPortals(world);
         Iterable<Entity> worldEntityList = McHelper.getWorldEntityList(world);
@@ -425,7 +425,7 @@ public class CollisionHelper {
             }
         }
         
-        world.getProfiler().pop();
+        net.minecraft.util.profiling.Profiler.get().pop();
     }
     
     public static void init() {
@@ -523,13 +523,13 @@ public class CollisionHelper {
     @Environment(EnvType.CLIENT)
     private static void updateClientStagnateStatus() {
         if (thisTickStagnate && lastTickStagnate) {
-            Minecraft.getInstance().gui.setOverlayMessage(
+            Minecraft.getInstance().gui.hud.setOverlayMessage(
                 Component.translatable("imm_ptl.stagnate_movement"),
                 false
             );
         }
         else if (!thisTickStagnate && lastTickStagnate) {
-            Minecraft.getInstance().gui.setOverlayMessage(
+            Minecraft.getInstance().gui.hud.setOverlayMessage(
                 Component.literal(""),
                 false
             );

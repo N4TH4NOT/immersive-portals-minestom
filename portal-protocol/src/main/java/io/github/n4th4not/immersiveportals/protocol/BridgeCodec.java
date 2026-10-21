@@ -10,7 +10,8 @@ import java.util.*;
  */
 public final class BridgeCodec {
     public static final String CHANNEL = "imm_ptl:bridge";
-    public static final int VERSION = 1,
+    public static final int FEATURE_GRAVITY = 1;
+    public static final int VERSION = 2,
             MINECRAFT_PROTOCOL = 776,
             MAX_PAYLOAD = 32_767,
             MAX_PORTALS = 4096;
@@ -28,6 +29,7 @@ public final class BridgeCodec {
                     out.writeByte(0);
                     out.writeInt(m.protocol());
                     out.writeInt(m.minecraftProtocol());
+                    out.writeInt(m.features());
                 }
                 case BridgeMessage.Welcome m -> {
                     out.writeByte(1);
@@ -86,6 +88,14 @@ public final class BridgeCodec {
                     out.writeDouble(m.portalScale());
                     out.writeFloat(m.yaw());
                     out.writeFloat(m.pitch());
+                    gravity(out, m.gravity());
+                }
+                case BridgeMessage.Gravity m -> {
+                    out.writeByte(12);
+                    text(out, m.world());
+                    out.writeInt(m.entityId());
+                    uuid(out, m.entity());
+                    gravity(out, m.state());
                 }
                 case BridgeMessage.Interaction m -> {
                     out.writeByte(10);
@@ -109,7 +119,7 @@ public final class BridgeCodec {
             if (in.readInt() != MAGIC) throw new IllegalArgumentException("Invalid bridge magic");
             BridgeMessage result =
                     switch (in.readUnsignedByte()) {
-                        case 0 -> new BridgeMessage.Hello(in.readInt(), in.readInt());
+                        case 0 -> new BridgeMessage.Hello(in.readInt(), in.readInt(), in.readInt());
                         case 1 -> {
                             UUID session = uuid(in);
                             int n = count(in, 64);
@@ -143,7 +153,11 @@ public final class BridgeCodec {
                                         vec(in),
                                         in.readDouble(),
                                         in.readFloat(),
-                                        in.readFloat());
+                                        in.readFloat(),
+                                        gravity(in));
+                        case 12 ->
+                                new BridgeMessage.Gravity(
+                                        text(in), in.readInt(), uuid(in), gravity(in));
                         case 10 -> {
                             int n = count(in, 3);
                             var path = new ArrayList<UUID>(n);
@@ -163,6 +177,15 @@ public final class BridgeCodec {
         int n = in.readInt();
         if (n < 0 || n > limit) throw new IllegalArgumentException("Invalid collection length");
         return n;
+    }
+
+    private static void gravity(DataOutputStream out, GravityState state) throws IOException {
+        out.writeByte(state.direction().ordinal());
+        out.writeDouble(state.strength());
+    }
+
+    private static GravityState gravity(DataInputStream in) throws IOException {
+        return new GravityState(GravityDirection.fromId(in.readUnsignedByte()), in.readDouble());
     }
 
     private static void uuid(DataOutputStream out, UUID id) throws IOException {

@@ -4,7 +4,11 @@ import java.util.List;
 import java.util.UUID;
 
 public sealed interface BridgeMessage {
-    record Hello(int protocol, int minecraftProtocol) implements BridgeMessage {}
+    record Hello(int protocol, int minecraftProtocol, int features) implements BridgeMessage {
+        public Hello(int protocol, int minecraftProtocol) {
+            this(protocol, minecraftProtocol, 0);
+        }
+    }
 
     record World(String key, String dimensionType, int seaLevel) {
         public World {
@@ -31,9 +35,26 @@ public sealed interface BridgeMessage {
     record Teleport(UUID portal, Vec3 fromEye, Vec3 toEye) implements BridgeMessage {}
 
     record Correction(
-            String world, Vec3 feet, Vec3 velocity, double portalScale, float yaw, float pitch)
+            String world,
+            Vec3 feet,
+            Vec3 velocity,
+            double portalScale,
+            float yaw,
+            float pitch,
+            GravityState gravity)
             implements BridgeMessage {
+        public Correction(
+                String world,
+                Vec3 feet,
+                Vec3 velocity,
+                double portalScale,
+                float yaw,
+                float pitch) {
+            this(world, feet, velocity, portalScale, yaw, pitch, GravityState.DEFAULT);
+        }
+
         public Correction {
+            java.util.Objects.requireNonNull(gravity);
             PortalDefinition.worldKey(world);
             if (!Double.isFinite(portalScale)
                     || portalScale < 1e-6
@@ -41,6 +62,16 @@ public sealed interface BridgeMessage {
                     || !Float.isFinite(yaw)
                     || !Float.isFinite(pitch))
                 throw new IllegalArgumentException("Invalid player correction");
+        }
+    }
+
+    /** Server-owned state, addressed by both numeric id and UUID to reject recycled entity ids. */
+    record Gravity(String world, int entityId, UUID entity, GravityState state)
+            implements BridgeMessage {
+        public Gravity {
+            PortalDefinition.worldKey(world);
+            java.util.Objects.requireNonNull(entity);
+            java.util.Objects.requireNonNull(state);
         }
     }
 

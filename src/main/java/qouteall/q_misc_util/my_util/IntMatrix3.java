@@ -55,7 +55,7 @@ public class IntMatrix3 {
     
     public Direction transformDirection(Direction direction) {
         BlockPos vec = transform(direction.getUnitVec3i());
-        return Direction.fromDelta(vec.getX(), vec.getY(), vec.getZ());
+        return Direction.getApproximateNearest(vec.getX(), vec.getY(), vec.getZ());
     }
     
     @Override

@@ -120,7 +120,7 @@ public class McHelper {
         String text
     ) {
         Helper.log(text);
-        player.displayClientMessage(Component.literal(text), false);
+        player.sendSystemMessage(Component.literal(text), false);
     }
     
     public static long getServerGameTime() {
@@ -239,8 +239,8 @@ public class McHelper {
     @SuppressWarnings("JavadocReference")
     @IPVanillaCopy
     public static int getPlayerLoadDistance(ServerPlayer player) {
-        assert player.getServer() != null;
-        int loadDistanceOnServer = getLoadDistanceOnServer(player.getServer());
+        assert player.level().getServer() != null;
+        int loadDistanceOnServer = getLoadDistanceOnServer(player.level().getServer());
         return Mth.clamp(player.requestedViewDistance(), 2, loadDistanceOnServer);
     }
     
@@ -318,10 +318,7 @@ public class McHelper {
         // minecarts, boats and LivingEntity use position interpolation
         // don't make interpolate, or it may interpolate into unloaded chunks
         vehicle.setPos(newVehiclePos.x(), newVehiclePos.y(), newVehiclePos.z());
-        vehicle.lerpTo(
-            newVehiclePos.x(), newVehiclePos.y(), newVehiclePos.z(),
-            vehicle.getYRot(), vehicle.getXRot(), 0
-        );
+        vehicle.snapTo(newVehiclePos, vehicle.getYRot(), vehicle.getXRot());
         
         McHelper.setPosAndLastTickPos(
             vehicle, newVehiclePos, newVehicleLastTickPos
@@ -396,11 +393,11 @@ public class McHelper {
     
     
     public static Portal copyEntity(Portal portal) {
-        Portal newPortal = ((Portal) portal.getType().create(portal.level()));
+        Portal newPortal = ((Portal) portal.getType().create(portal.level(), net.minecraft.world.entity.EntitySpawnReason.LOAD));
         
         Validate.notNull(newPortal);
         
-        newPortal.load(portal.saveWithoutId(new CompoundTag()));
+        qouteall.imm_ptl.core.mc_utils.NbtCompatibility.load(newPortal, qouteall.imm_ptl.core.mc_utils.NbtCompatibility.save(portal));
         return newPortal;
     }
     
@@ -410,7 +407,7 @@ public class McHelper {
      * Only check whether the region file exists now.
      */
     public static boolean getDoesRegionFileExist(ResourceKey<Level> toDimension, BlockPos toPos) {
-        ChunkPos chunkPos = new ChunkPos(toPos);
+        ChunkPos chunkPos = ChunkPos.containing(toPos);
         
         LevelStorageSource.LevelStorageAccess storageSource = MiscHelper.getServer().storageSource;
         
@@ -422,19 +419,23 @@ public class McHelper {
     
     public static MutableComponent getLinkText(String link) {
         return Component.literal(link).withStyle(
-            style -> style.withClickEvent(new ClickEvent(
-                ClickEvent.Action.OPEN_URL, link
-            )).withUnderlined(true)
+            style -> style.withClickEvent(new ClickEvent.OpenUrl(java.net.URI.create(link))).withUnderlined(true)
         );
     }
     
+    public static void sendMessage(net.minecraft.world.entity.player.Player player, Component message, boolean overlay) {
+        if (player instanceof ServerPlayer serverPlayer) serverPlayer.sendSystemMessage(message, overlay);
+        else if (overlay) net.minecraft.client.Minecraft.getInstance().gui.hud.setOverlayMessage(message, false);
+        else player.sendSystemMessage(message);
+    }
+
     public static void validateOnServerThread() {
         Validate.isTrue(Thread.currentThread() == MiscHelper.getServer().getRunningThread(), "must be on server thread");
     }
     
     public static void invokeCommandAs(Entity commandSender, List<String> commandList) {
-        CommandSourceStack commandSource = commandSender.createCommandSourceStack().withPermission(2).withSuppressedOutput();
-        MinecraftServer server = commandSender.getServer();
+        CommandSourceStack commandSource = commandSender.level().getServer().createCommandSourceStack().withEntity(commandSender).withPosition(commandSender.position()).withRotation(commandSender.getRotationVector()).withLevel((ServerLevel) commandSender.level()).withPermission(net.minecraft.server.permissions.LevelBasedPermissionSet.GAMEMASTER).withSuppressedOutput();
+        MinecraftServer server = commandSender.level().getServer();
         assert server != null;
         Commands commandManager = server.getCommands();
         
@@ -455,7 +456,7 @@ public class McHelper {
             return;
         }
         
-        entityTracker.broadcastAndSend(packet);
+        entityTracker.sendToTrackingPlayersAndSelf((Packet) packet);
     }
     
     //it's a little bit incorrect with corner glass pane
@@ -481,14 +482,14 @@ public class McHelper {
     
     public static boolean isServerChunkFullyLoaded(ServerLevel world, ChunkPos chunkPos) {
         LevelChunk chunk = getServerChunkIfPresent(
-            world.dimension(), chunkPos.x, chunkPos.z
+            world.dimension(), chunkPos.x(), chunkPos.z()
         );
         
         if (chunk == null) {
             return false;
         }
         
-        boolean entitiesLoaded = world.areEntitiesLoaded(chunkPos.toLong());
+        boolean entitiesLoaded = world.areEntitiesLoaded(chunkPos.pack());
         
         return entitiesLoaded;
     }
@@ -808,7 +809,7 @@ public class McHelper {
             }
             
             for (ServerPlayer player : playerList) {
-                player.displayClientMessage(text, false);
+                player.sendSystemMessage(text, false);
             }
             
             return true;
@@ -862,11 +863,11 @@ public class McHelper {
     }
     
     public static int getMinY(LevelAccessor world) {
-        return world.getMinBuildHeight();
+        return world.getMinY();
     }
     
     public static int getMaxYExclusive(LevelAccessor world) {
-        return world.getMaxBuildHeight();
+        return world.getMaxY();
     }
     
     public static int getMaxContentYExclusive(LevelAccessor world) {
@@ -874,11 +875,11 @@ public class McHelper {
     }
     
     public static int getMinSectionY(LevelAccessor world) {
-        return world.getMinSection();
+        return world.getMinSectionY();
     }
     
     public static int getMaxSectionYExclusive(LevelAccessor world) {
-        return world.getMaxSection();
+        return world.getMaxSectionY();
     }
     
     public static int getYSectionNumber(LevelAccessor world) {

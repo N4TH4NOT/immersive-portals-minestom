@@ -46,6 +46,12 @@ public final class NativeWorldRenderer {
     private static final Map<Layer, Integer> VIEW_COUNTS = new HashMap<>();
     private static final Map<ClientLevel, ParticleEngine> PARTICLES = new IdentityHashMap<>();
     private static final Map<GameRenderer, Matrix4f> PROJECTIONS = new IdentityHashMap<>();
+    private static final Map<GameRenderer, Object> VISIBILITY_TOKENS = new IdentityHashMap<>();
+
+    public static Object visibilityToken(GameRenderer renderer) {
+        return VISIBILITY_TOKENS.computeIfAbsent(renderer, ignored -> new Object());
+    }
+
     private static int activeScenes;
     private static boolean lastFlipX;
     private static Matrix4f lastProjection = new Matrix4f();
@@ -130,6 +136,7 @@ public final class NativeWorldRenderer {
         @Override
         public void close() {
             PROJECTIONS.remove(gameRenderer);
+            VISIBILITY_TOKENS.remove(gameRenderer);
             if (ownsGameRenderer || renderer != CLIENT.levelRenderer) {
                 withContext(
                         this,
@@ -358,6 +365,7 @@ public final class NativeWorldRenderer {
 
     public static void reload() {
         if (reloading) return;
+        NativePortalOcclusion.close();
         reloading = true;
         try {
             SCENES.values()
@@ -377,6 +385,7 @@ public final class NativeWorldRenderer {
 
     /** Advance native ring buffers once per submitted frame, after every portal and GUI view. */
     public static void endFrame() {
+        NativePortalOcclusion.endFrame();
         VIEW_COUNTS.clear();
         for (Scene scene : SCENES.values())
             if (scene.needsEndFrame) {
@@ -426,6 +435,7 @@ public final class NativeWorldRenderer {
     public static void resetOffscreen() {
         if (isRenderingScene())
             throw new IllegalStateException("Cannot reload shaders during a portal render");
+        NativePortalOcclusion.close();
         SCENES.entrySet()
                 .removeIf(
                         entry -> {
@@ -524,11 +534,13 @@ public final class NativeWorldRenderer {
     }
 
     public static void close() {
+        NativePortalOcclusion.close();
         SCENES.values().forEach(Scene::close);
         CLIENT.levelExtractor.setLevel(null);
         SCENES.clear();
         PARTICLES.clear();
         PROJECTIONS.clear();
+        VISIBILITY_TOKENS.clear();
         VIEW_COUNTS.clear();
     }
 }

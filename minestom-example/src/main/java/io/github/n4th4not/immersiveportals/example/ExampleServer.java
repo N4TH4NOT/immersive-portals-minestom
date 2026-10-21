@@ -21,6 +21,10 @@ import java.util.UUID;
 public final class ExampleServer {
     public static void main(String[] args) {
         MinecraftServer server = MinecraftServer.init(new Auth.Offline());
+        if (Boolean.getBoolean("portal.example.gravity")) {
+            GravityExample.run(server);
+            return;
+        }
         boolean interactionValidation = Boolean.getBoolean("portal.example.interactions");
         int galleryOffset = interactionValidation ? 20 : 0;
         var manager = MinecraftServer.getInstanceManager();
@@ -59,7 +63,9 @@ public final class ExampleServer {
                 net.minestom.server.item.ItemStack.of(
                         net.minestom.server.item.Material.DIAMOND_HELMET));
         if (interactionValidation) {
-            var annex = new InstanceContainer(UUID.randomUUID(), DimensionType.OVERWORLD, Key.key("demo:annex"));
+            var annex =
+                    new InstanceContainer(
+                            UUID.randomUUID(), DimensionType.OVERWORLD, Key.key("demo:annex"));
             manager.registerInstance(annex);
             annex.setGenerator(unit -> unit.modifier().fillHeight(0, 70, Block.STONE));
             annex.loadChunk(0, -1).join();
@@ -90,10 +96,13 @@ public final class ExampleServer {
                     if (interactionValidation) {
                         String markerMessage = null;
                         if (event.packet() instanceof ClientPlayerBlockPlacementPacket)
-                            markerMessage = "MINESTOM_REMOTE_BLOCK_USE " + event.portalPath().size();
+                            markerMessage =
+                                    "MINESTOM_REMOTE_BLOCK_USE " + event.portalPath().size();
                         if (event.packet() instanceof ClientPlayerActionPacket action
-                            && action.status() == ClientPlayerActionPacket.Status.STARTED_DIGGING)
-                            markerMessage = "MINESTOM_REMOTE_BLOCK_ATTACK " + event.portalPath().size();
+                                && action.status()
+                                        == ClientPlayerActionPacket.Status.STARTED_DIGGING)
+                            markerMessage =
+                                    "MINESTOM_REMOTE_BLOCK_ATTACK " + event.portalPath().size();
                         if (event.packet() instanceof ClientInteractEntityPacket)
                             markerMessage = "MINESTOM_REMOTE_ENTITY_USE_OK";
                         if (event.packet() instanceof ClientAttackPacket)

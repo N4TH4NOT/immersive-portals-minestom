@@ -4,5 +4,6 @@ java { toolchain.languageVersion = JavaLanguageVersion.of(25) }
 dependencies { implementation project(':minestom'); implementation 'net.minestom:minestom:2026.10.07-26.2'; runtimeOnly 'org.slf4j:slf4j-simple:2.0.17' }
 application { mainClass = 'io.github.n4th4not.immersiveportals.example.ExampleServer' }
 tasks.named('run') {
+    systemProperty 'portal.example.gravity', providers.gradleProperty('portalSmokeGravity').isPresent().toString()
     systemProperty 'portal.example.interactions', providers.gradleProperty('portalSmokeInteractions').getOrElse('false')
 }

@@ -57,6 +57,10 @@ public final class PortalSmokeClient implements ClientModInitializer {
                         return;
                     }
                     ticks++;
+                    if (Boolean.getBoolean("portalSmoke.gravity")) {
+                        PortalGravitySmoke.tick(client, ticks);
+                        return;
+                    }
                     if (Boolean.getBoolean("portalSmoke.rendering")) {
                         PortalRenderingSmoke.tick(client, ticks);
                         return;

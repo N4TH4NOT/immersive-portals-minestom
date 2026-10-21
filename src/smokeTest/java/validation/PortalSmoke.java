@@ -226,6 +226,17 @@ public final class PortalSmoke implements ModInitializer {
                                             > 1)
                                 throw new AssertionError(
                                         "Server view was not rotated: " + player.getYRot());
+                            if (player.getGameProfile().name().equals("GravityTest")) {
+                                var state =
+                                        qouteall.imm_ptl.core.compat.GravityChangerInterface.invoker
+                                                .getState(player);
+                                System.out.println("PORTAL_SMOKE_SERVER_GRAVITY " + state);
+                                if (state.direction()
+                                        != io.github.n4th4not.immersiveportals.protocol
+                                                .GravityDirection.NORTH)
+                                    throw new AssertionError(
+                                            "Server gravity was not transformed: " + state);
+                            }
                             pending.remove(entry.getKey());
                             System.out.println(
                                     entry.getValue()
@@ -234,6 +245,8 @@ public final class PortalSmoke implements ModInitializer {
                         }
                     }
                 });
+        if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("gravity_changer"))
+            FabricGravitySmoke.init();
     }
 
     private static Portal extra(

@@ -75,10 +75,10 @@ public class ImmPtlNetworking {
         
         public void handle(ServerPlayer player) {
             ResourceKey<Level> dim = PortalAPI.serverIntToDimKey(
-                player.server, dimensionId
+                player.level().getServer(), dimensionId
             );
             
-            ServerTeleportationManager.of(player.server).onPlayerTeleportedInClient(
+            ServerTeleportationManager.of(player.level().getServer()).onPlayerTeleportedInClient(
                 player, dim, eyePosBeforeTeleportation, portalId
             );
         }
@@ -203,7 +203,7 @@ public class ImmPtlNetworking {
             }
             else {
                 // spawn new portal
-                Entity entity = entityType.create(world);
+                Entity entity = entityType.create(world, net.minecraft.world.entity.EntitySpawnReason.LOAD);
                 Validate.notNull(entity, "Entity type is null");
                 
                 if (!(entity instanceof Portal portal)) {
@@ -214,7 +214,7 @@ public class ImmPtlNetworking {
                 entity.setId(id);
                 entity.setUUID(uuid);
                 entity.syncPacketPositionCodec(x, y, z);
-                entity.moveTo(x, y, z);
+                entity.snapTo(x, y, z);
                 
                 portal.readPortalDataFromNbt(extraData);
                 

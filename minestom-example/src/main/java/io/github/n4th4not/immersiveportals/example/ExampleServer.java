@@ -21,6 +21,8 @@ import java.util.UUID;
 public final class ExampleServer {
     public static void main(String[] args) {
         MinecraftServer server = MinecraftServer.init(new Auth.Offline());
+        boolean interactionValidation = Boolean.getBoolean("portal.example.interactions");
+        int galleryOffset = interactionValidation ? 20 : 0;
         var manager = MinecraftServer.getInstanceManager();
         var lobby =
                 new InstanceContainer(
@@ -38,30 +40,41 @@ public final class ExampleServer {
                 gallery,
                 builder ->
                         builder.origin(new Vec3(0, 72, 0))
-                                .destination(new Vec3(0, 72, 0))
+                                .destination(new Vec3(galleryOffset, 72, 0))
                                 .size(4, 4));
         portals.create(
                 gallery,
                 lobby,
                 builder ->
-                        builder.origin(new Vec3(0, 72, 0))
+                        builder.origin(new Vec3(galleryOffset, 72, 0))
                                 .destination(new Vec3(0, 72, 0))
                                 .axes(new Vec3(-1, 0, 0), new Vec3(0, 1, 0))
                                 .size(4, 4));
-        gallery.loadChunk(0, -1).join();
-        gallery.setBlock(0, 71, -2, Block.CHEST);
+        gallery.loadChunk(galleryOffset >> 4, -1).join();
+        gallery.setBlock(galleryOffset, 71, -2, Block.CHEST);
         LivingEntity marker = new LivingEntity(EntityType.ARMOR_STAND);
-        marker.setInstance(gallery, new Pos(2, 70, -4));
+        marker.setInstance(gallery, new Pos(galleryOffset + 2, 70, -4));
         marker.setEquipment(
                 EquipmentSlot.HELMET,
                 net.minestom.server.item.ItemStack.of(
                         net.minestom.server.item.Material.DIAMOND_HELMET));
+        if (interactionValidation) {
+            var annex = new InstanceContainer(UUID.randomUUID(), DimensionType.OVERWORLD, Key.key("demo:annex"));
+            manager.registerInstance(annex);
+            annex.setGenerator(unit -> unit.modifier().fillHeight(0, 70, Block.STONE));
+            annex.loadChunk(0, -1).join();
+            annex.setBlock(0, 71, -1, Block.STONE);
+            portals.create(gallery, annex, p -> p.origin(new Vec3(galleryOffset, 72, -1))
+                .destination(new Vec3(0, 72, 0)).size(2, 3));
+            var target = new LivingEntity(EntityType.ARMOR_STAND);
+            target.setInstance(gallery, new Pos(galleryOffset + 1.5, 70, -.4)).join();
+        }
         MinecraftServer.getGlobalEventHandler()
                 .addListener(
                         AsyncPlayerConfigurationEvent.class,
                         event -> {
                             event.setSpawningInstance(lobby);
-                            event.getPlayer().setRespawnPoint(new Pos(.5, 70, 3, 180, 0));
+                            event.getPlayer().setRespawnPoint(new Pos(.5, 70, interactionValidation ? 2 : 3, 180, 0));
                         });
         MinecraftServer.getGlobalEventHandler()
                 .addListener(
@@ -74,6 +87,24 @@ public final class ExampleServer {
                         });
         portals.onRemoteInteraction(
                 event -> {
+                    if (interactionValidation) {
+                        String markerMessage = null;
+                        if (event.packet() instanceof ClientPlayerBlockPlacementPacket)
+                            markerMessage = "MINESTOM_REMOTE_BLOCK_USE " + event.portalPath().size();
+                        if (event.packet() instanceof ClientPlayerActionPacket action
+                            && action.status() == ClientPlayerActionPacket.Status.STARTED_DIGGING)
+                            markerMessage = "MINESTOM_REMOTE_BLOCK_ATTACK " + event.portalPath().size();
+                        if (event.packet() instanceof ClientInteractEntityPacket)
+                            markerMessage = "MINESTOM_REMOTE_ENTITY_USE_OK";
+                        if (event.packet() instanceof ClientAttackPacket)
+                            markerMessage = "MINESTOM_REMOTE_ENTITY_ATTACK_OK";
+                        if (markerMessage != null) {
+                            System.out.println(markerMessage);
+                            event.player().sendMessage(Component.text(markerMessage));
+                        }
+                        // Intentionally no gameplay action: callbacks must arrive regardless.
+                        return;
+                    }
                     if (event.packet() instanceof ClientPlayerBlockPlacementPacket
                             && event.blockPosition().isPresent()
                             && event.instance()

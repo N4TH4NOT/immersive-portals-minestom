@@ -16,6 +16,8 @@ import net.minestom.server.network.ConnectionState;
 import net.minestom.server.network.packet.server.*;
 import net.minestom.server.network.packet.server.common.PluginMessagePacket;
 import net.minestom.server.network.packet.server.play.*;
+import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.timer.*;
 
 import java.util.*;
@@ -301,11 +303,34 @@ public final class PortalService implements AutoCloseable {
                 case BridgeMessage.Teleport request -> teleport(s, request);
                 case BridgeMessage.Interaction request ->
                         RemoteInteractionEvent.validate(this, s.player, request)
-                                .ifPresent(interaction);
+                                .ifPresent(event -> {
+                                    try { interaction.accept(event); }
+                                    finally { acknowledgeInteraction(s, event); }
+                                });
                 default -> {}
             }
         } catch (RuntimeException ignored) {
             send(player, new BridgeMessage.Rejected("Invalid portal request"));
+        }
+    }
+
+    private void acknowledgeInteraction(Session session, RemoteInteractionEvent event) {
+        int sequence;
+        if (event.packet() instanceof ClientPlayerActionPacket action) sequence = action.sequence();
+        else if (event.packet() instanceof ClientPlayerBlockPlacementPacket placement) sequence = placement.sequence();
+        else return;
+        // Even a callback which does nothing must resolve client-side block prediction.
+        // Re-send the authoritative block first, so a denied creative break/placement rolls back.
+        var position = event.blockPosition().orElseThrow();
+        ServerPacket update = new BlockChangePacket(position, event.instance().getBlock(position).stateId());
+        ServerPacket ack = new AcknowledgeBlockChangePacket(sequence);
+        if (event.instance() == session.player.getInstance()) session.player.sendPackets(update, ack);
+        else {
+            View view = session.views.get(event.instance().getDimensionName());
+            if (view != null) {
+                worldPacket(session, view, update);
+                worldPacket(session, view, ack);
+            }
         }
     }
 

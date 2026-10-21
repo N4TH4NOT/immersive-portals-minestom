@@ -13,9 +13,11 @@ public final class PortalSmokeClient implements ClientModInitializer {
     private boolean rendered;
     private boolean crossed;
     private final boolean interaction = Boolean.getBoolean("portalSmoke.interaction");
+    private final boolean interactions = Boolean.getBoolean("portalSmoke.interactions");
 
     @Override
     public void onInitializeClient() {
+        if (interactions) PortalInteractionSmoke.init();
         IPConfig.getConfig().initialScreenShown = true;
         ClientTickEvents.END_CLIENT_TICK.register(
                 client -> {
@@ -152,6 +154,7 @@ public final class PortalSmokeClient implements ClientModInitializer {
                         client.player.closeContainer();
                         System.out.println("PORTAL_SMOKE_INTERACTION_OK");
                     }
+                    if (interactions) PortalInteractionSmoke.tick(client, ticks);
                     if (ticks == 160) client.options.keyUp.setDown(true);
                     if (ticks > 160
                             && client.level

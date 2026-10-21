@@ -11,12 +11,13 @@
   "description": "See through portals and travel between dimensions seamlessly.",
   "authors": [
     "qouteall",
-    "Other Contributors (see GitHub)"
+    "Other Contributors (see GitHub)",
+    "N4TH4NOT (Minecraft 26.2 port and Minestom bridge)"
   ],
   "contact": {
     "homepage": "https://qouteall.fun/immptl",
-    "sources": "https://github.com/iPortalTeam/ImmersivePortalsMod",
-    "issues": "https://github.com/iPortalTeam/ImmersivePortalsMod/discussions",
+    "sources": "https://github.com/N4TH4NOT/immersive-portals-minestom",
+    "issues": "https://github.com/N4TH4NOT/immersive-portals-minestom/issues",
     "email": "qouteall@163.com",
     "discord": "https://discord.gg/BZxgURK"
   },

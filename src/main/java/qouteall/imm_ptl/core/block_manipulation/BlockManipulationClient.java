@@ -30,6 +30,7 @@ public class BlockManipulationClient {
     
     public static ResourceKey<Level> remotePointedDim;
     public static HitResult remoteHitResult;
+    public static java.util.List<java.util.UUID> remotePortalPath = java.util.List.of();
     
     public static boolean isPointingToPortal() {
         return remotePointedDim != null;
@@ -60,6 +61,7 @@ public class BlockManipulationClient {
         
         remotePointedDim = null;
         remoteHitResult = null;
+        remotePortalPath = java.util.List.of();
         
         if (!BlockManipulationServer.canDoCrossPortalInteractionEvent.invoker().test(client.player)) {
             return;
@@ -186,6 +188,7 @@ public class BlockManipulationClient {
             if (!world.getBlockState(((BlockHitResult) remoteHitResult).getBlockPos()).isAir()) {
                 client.hitResult = createMissedHitResult(from, to);
                 remotePointedDim = portal.getDestDim();
+                remotePortalPath = java.util.List.of(portal.getUUID());
             }
         }
         

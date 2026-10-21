@@ -13,6 +13,7 @@ public class IPModEntry implements ModInitializer {
     @Override
     public void onInitialize() {
         IPModMain.init();
+        qouteall.imm_ptl.core.network.bridge.BridgePayload.init();
         RequiemCompat.init();
         
         IPModMain.registerEntityTypes(

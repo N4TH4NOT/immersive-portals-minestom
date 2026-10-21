@@ -57,6 +57,10 @@ public final class PortalSmokeClient implements ClientModInitializer {
                         return;
                     }
                     ticks++;
+                    if (Boolean.getBoolean("portalSmoke.rendering")) {
+                        PortalRenderingSmoke.tick(client, ticks);
+                        return;
+                    }
                     rendered |= RenderStates.getRenderedPortalNum() > 0;
                     if (ticks == 10)
                         client.gui.setScreen(

@@ -77,6 +77,8 @@ if (providers.gradleProperty('portalSmoke').isPresent()) {
                 vmArg '-DportalSmoke.target=' + providers.gradleProperty('portalSmokeTarget').getOrElse('minecraft:the_nether')
                 vmArg '-DportalSmoke.interaction=' + providers.gradleProperty('portalSmokeInteraction').getOrElse('false')
                 vmArg '-DportalSmoke.interactions=' + providers.gradleProperty('portalSmokeInteractions').getOrElse('false')
+                vmArg '-DportalSmoke.rendering=' + providers.gradleProperty('portalRenderSmoke').getOrElse('false')
+                vmArg '-Dimm_ptl.renderDiagnostics=true'
             }
             server { source sourceSets.smokeTest; runDir 'run/smoke-server' }
         }

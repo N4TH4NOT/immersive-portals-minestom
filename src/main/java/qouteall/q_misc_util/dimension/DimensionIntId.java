@@ -13,7 +13,7 @@ import net.minecraft.world.level.Level;
 import org.apache.commons.lang3.Validate;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
-import qouteall.dimlib.api.DimensionAPI;
+import qouteall.q_misc_util.dimension.DimensionLifecycle;
 import qouteall.imm_ptl.core.IPCGlobal;
 import qouteall.imm_ptl.core.IPPerServerInfo;
 import qouteall.imm_ptl.core.McHelper;
@@ -30,12 +30,12 @@ public class DimensionIntId {
     
     public static void init() {
         // make sure that dimension int id updates before global portal storage update
-        DimensionAPI.SERVER_DIMENSION_DYNAMIC_UPDATE_EVENT.addPhaseOrdering(
+        DimensionLifecycle.SERVER_DIMENSION_DYNAMIC_UPDATE_EVENT.addPhaseOrdering(
             DYNAMIC_UPDATE_EVENT_EARLY_PHASE,
             Event.DEFAULT_PHASE
         );
         
-        DimensionAPI.SERVER_DIMENSION_DYNAMIC_UPDATE_EVENT.register(
+        DimensionLifecycle.SERVER_DIMENSION_DYNAMIC_UPDATE_EVENT.register(
             DYNAMIC_UPDATE_EVENT_EARLY_PHASE,
             (server, dimensions) -> {
                 onServerDimensionChanged(server);

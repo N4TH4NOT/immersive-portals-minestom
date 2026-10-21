@@ -78,7 +78,7 @@ public class ImmPtlNetworkConfig {
         @Override
         public void start(Consumer<Packet<?>> consumer) {
             consumer.accept(
-                ServerConfigurationNetworking.createS2CPacket(new S2CConfigStartPacket(
+                ServerConfigurationNetworking.createClientboundPacket(new S2CConfigStartPacket(
                     immPtlVersion
                 ))
             );
@@ -95,7 +95,7 @@ public class ImmPtlNetworkConfig {
     ) implements CustomPacketPayload {
         public static final CustomPacketPayload.Type<S2CConfigStartPacket> TYPE =
             new CustomPacketPayload.Type<>(
-                McHelper.newResourceLocation("iportal:config_packet")
+                McHelper.newIdentifier("iportal:config_packet")
             );
         
         public static final StreamCodec<FriendlyByteBuf, S2CConfigStartPacket> CODEC = StreamCodec.of(
@@ -136,7 +136,7 @@ public class ImmPtlNetworkConfig {
     ) implements CustomPacketPayload {
         public static final CustomPacketPayload.Type<C2SConfigCompletePacket> TYPE =
             new CustomPacketPayload.Type<>(
-                McHelper.newResourceLocation("iportal:configure_complete")
+                McHelper.newIdentifier("iportal:configure_complete")
             );
         public static final StreamCodec<FriendlyByteBuf, C2SConfigCompletePacket> CODEC = StreamCodec.of(
             (b, p) -> p.write(b), C2SConfigCompletePacket::read
@@ -157,7 +157,7 @@ public class ImmPtlNetworkConfig {
         public void handle(
             ServerConfigurationNetworking.Context context
         ) {
-            ServerConfigurationPacketListenerImpl networkHandler = context.networkHandler();
+            ServerConfigurationPacketListenerImpl networkHandler = context.packetListener();
             
             GameProfile gameProfile =
                 ((IEServerConfigurationPacketListenerImpl) networkHandler).ip_getGameProfile();
@@ -204,11 +204,11 @@ public class ImmPtlNetworkConfig {
         
         LOGGER.info("Immersive Portals Core version {}", immPtlVersion);
         
-        PayloadTypeRegistry.configurationS2C().register(
+        PayloadTypeRegistry.clientboundConfiguration().register(
             S2CConfigStartPacket.TYPE, S2CConfigStartPacket.CODEC
         );
         
-        PayloadTypeRegistry.configurationC2S().register(
+        PayloadTypeRegistry.serverboundConfiguration().register(
             C2SConfigCompletePacket.TYPE, C2SConfigCompletePacket.CODEC
         );
         

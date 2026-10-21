@@ -15,7 +15,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.dimension.DimensionType;
@@ -185,8 +185,8 @@ public class ClientWorldLoader {
             Vec3 playerPos = CLIENT.player.position();
             Vec3 center = portal.transformPoint(playerPos);
             
-            Camera camera = CLIENT.gameRenderer.getMainCamera();
-            Vec3 oldCameraPos = camera.getPosition();
+            Camera camera = CLIENT.gameRenderer.mainCamera();
+            Vec3 oldCameraPos = camera.position();
             
             ((IECamera) camera).portal_setPos(center);
             
@@ -282,7 +282,7 @@ public class ClientWorldLoader {
         if (result == null) {
             LOGGER.warn(
                 "Acquiring LevelRenderer before acquiring Level. Something is probably wrong. {}",
-                dimension.location(), new Throwable()
+                dimension.identifier(), new Throwable()
             );
             
             // the world renderer is created along with the world
@@ -292,7 +292,7 @@ public class ClientWorldLoader {
             result = WORLD_RENDERER_MAP.get(dimension);
             
             if (result == null) {
-                throw new RuntimeException("Unable to get LevelRenderer of " + dimension.location());
+                throw new RuntimeException("Unable to get LevelRenderer of " + dimension.identifier());
             }
         }
         
@@ -392,7 +392,7 @@ public class ClientWorldLoader {
         
         Set<ResourceKey<Level>> dimIds = getServerDimensions();
         if (!dimIds.contains(dimension)) {
-            throw new RuntimeException("Cannot create invalid client dimension " + dimension.location());
+            throw new RuntimeException("Cannot create invalid client dimension " + dimension.identifier());
         }
         
         isCreatingClientWorld = true;
@@ -422,7 +422,7 @@ public class ClientWorldLoader {
             if (dimensionTypeKey == null) {
                 throw new IllegalStateException(
                     "Cannot find dimension type for %s in %s"
-                        .formatted(dimension.location(), dimIdToDimTypeId)
+                        .formatted(dimension.identifier(), dimIdToDimTypeId)
                 );
             }
             
@@ -432,8 +432,8 @@ public class ClientWorldLoader {
             int simulationDistance = CLIENT.level.getServerSimulationDistance();
             
             Holder<DimensionType> dimensionType = registryManager
-                .registryOrThrow(Registries.DIMENSION_TYPE)
-                .getHolderOrThrow(dimensionTypeKey);
+                .lookupOrThrow(Registries.DIMENSION_TYPE)
+                .getOrThrow(dimensionTypeKey);
             
             // currently use a separated level data object
             // day time is not shared between worlds
@@ -468,11 +468,11 @@ public class ClientWorldLoader {
             CLIENT_WORLD_MAP.put(dimension, newWorld);
             WORLD_RENDERER_MAP.put(dimension, worldRenderer);
             
-            LOGGER.info("Client World Created {}", dimension.location());
+            LOGGER.info("Client World Created {}", dimension.identifier());
         }
         catch (Exception e) {
             throw new IllegalStateException(
-                "Creating Client World " + dimension.location() + " " + CLIENT_WORLD_MAP.keySet(),
+                "Creating Client World " + dimension.identifier() + " " + CLIENT_WORLD_MAP.keySet(),
                 e
             );
         }
@@ -503,7 +503,7 @@ public class ClientWorldLoader {
     public static void _onWorldRendererReloaded() {
         Validate.isTrue(CLIENT.isSameThread());
         if (CLIENT.level != null) {
-            LOGGER.info("WorldRenderer reloaded {}", CLIENT.level.dimension().location());
+            LOGGER.info("WorldRenderer reloaded {}", CLIENT.level.dimension().identifier());
         }
         
         if (isReloadingOtherWorldRenderers) {
@@ -523,7 +523,7 @@ public class ClientWorldLoader {
         
         for (ResourceKey<Level> dim : toReload) {
             ClientLevel world = CLIENT_WORLD_MAP.get(dim);
-            Validate.notNull(world, "missing client world %s", dim.location());
+            Validate.notNull(world, "missing client world %s", dim.identifier());
             withSwitchedWorld(
                 world,
                 () -> {
@@ -594,7 +594,7 @@ public class ClientWorldLoader {
         
         if (world == null) {
             LOGGER.error(
-                "Ignoring redirected task of invalid dimension {}", dim.location(), new Throwable()
+                "Ignoring redirected task of invalid dimension {}", dim.identifier(), new Throwable()
             );
             return;
         }
@@ -613,10 +613,10 @@ public class ClientWorldLoader {
             LocalPlayer player = Minecraft.getInstance().player;
             assert player != null;
             RegistryAccess registryAccess = player.connection.registryAccess();
-            Registry<Biome> biomes = registryAccess.registryOrThrow(Registries.BIOME);
+            Registry<Biome> biomes = registryAccess.lookupOrThrow(Registries.BIOME);
             
             for (Map.Entry<String, Integer> entry : idMap.entrySet()) {
-                ResourceLocation id = McHelper.newResourceLocation(entry.getKey());
+                Identifier id = McHelper.newIdentifier(entry.getKey());
                 int expectedId = entry.getValue();
                 
                 if (biomes.getId(biomes.get(id)) != expectedId) {

@@ -15,7 +15,7 @@ import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientCommonPacketListener;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -148,7 +148,7 @@ public class GlobalPortalStorage extends SavedData {
     public static Packet<ClientCommonPacketListener> createSyncPacket(
         ServerLevel world, GlobalPortalStorage storage
     ) {
-        return ServerPlayNetworking.createS2CPacket(
+        return ServerPlayNetworking.createClientboundPacket(
             new ImmPtlNetworking.GlobalPortalSyncPacket(
                 PortalAPI.serverDimKeyToInt(world.getServer(), world.dimension()),
                 storage.save(new CompoundTag(), world.registryAccess())
@@ -311,7 +311,7 @@ public class GlobalPortalStorage extends SavedData {
         data.removeIf(e -> {
             ResourceKey<Level> dimensionTo = ((Portal) e).getDestDim();
             if (server.getLevel(dimensionTo) == null) {
-                LOGGER.error("Missing Dimension for global portal {}", dimensionTo.location());
+                LOGGER.error("Missing Dimension for global portal {}", dimensionTo.identifier());
                 return true;
             }
             return false;
@@ -345,7 +345,7 @@ public class GlobalPortalStorage extends SavedData {
         
         ((IEClientWorld) world).ip_setGlobalPortals(newPortals);
         
-        LOGGER.info("Global Portals Updated {}", dimension.location());
+        LOGGER.info("Global Portals Updated {}", dimension.identifier());
     }
     
     public static void convertNormalPortalIntoGlobalPortal(Portal portal) {

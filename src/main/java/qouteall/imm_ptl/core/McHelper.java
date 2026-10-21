@@ -7,7 +7,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -19,7 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkMap;
@@ -86,12 +86,12 @@ public class McHelper {
     
     public static final Placeholder placeholder = new Placeholder();
     
-    public static ResourceLocation newResourceLocation(String a, String b) {
-        return ResourceLocation.fromNamespaceAndPath(a, b);
+    public static Identifier newIdentifier(String a, String b) {
+        return Identifier.fromNamespaceAndPath(a, b);
     }
     
-    public static ResourceLocation newResourceLocation(String a) {
-        return ResourceLocation.parse(a);
+    public static Identifier newIdentifier(String a) {
+        return Identifier.parse(a);
     }
     
     @Deprecated
@@ -335,7 +335,7 @@ public class McHelper {
         ResourceKey<Level> dimension,
         int x, int z
     ) {
-        ChunkHolder chunkHolder_ = getIEChunkMap(dimension).ip_getChunkHolder(ChunkPos.asLong(x, z));
+        ChunkHolder chunkHolder_ = getIEChunkMap(dimension).ip_getChunkHolder(ChunkPos.pack(x, z));
         if (chunkHolder_ == null) {
             return null;
         }
@@ -347,7 +347,7 @@ public class McHelper {
     ) {
         ChunkHolder chunkHolder_ = ((IEChunkMap) (
             (ServerChunkCache) world.getChunkSource()
-        ).chunkMap).ip_getChunkHolder(ChunkPos.asLong(x, z));
+        ).chunkMap).ip_getChunkHolder(ChunkPos.pack(x, z));
         if (chunkHolder_ == null) {
             return null;
         }
@@ -740,8 +740,8 @@ public class McHelper {
     }
     
     
-    public static ResourceLocation dimensionTypeId(ResourceKey<Level> dimType) {
-        return dimType.location();
+    public static Identifier dimensionTypeId(ResourceKey<Level> dimType) {
+        return dimType.identifier();
     }
     
     public static <T> String serializeToJson(T object, Codec<T> codec) {
@@ -852,7 +852,7 @@ public class McHelper {
     ) {
         ServerLevel world = server.getLevel(dim);
         if (world == null) {
-            throw new RuntimeException("Missing dimension " + dim.location());
+            throw new RuntimeException("Missing dimension " + dim.identifier());
         }
         return world;
     }
@@ -893,7 +893,7 @@ public class McHelper {
         );
     }
     
-    public static String readTextResource(ResourceLocation identifier) {
+    public static String readTextResource(Identifier identifier) {
         String result = null;
         try {
             InputStream inputStream =
@@ -944,8 +944,8 @@ public class McHelper {
      * TODO possibly infer dimension name from dimension type
      */
     public static Component getDimensionName(ResourceKey<Level> dimension) {
-        String namespace = dimension.location().getNamespace();
-        String path = dimension.location().getPath();
+        String namespace = dimension.identifier().getNamespace();
+        String path = dimension.identifier().getPath();
         String translationkey = "dimension." + namespace + "." + path;
         MutableComponent component = Component.translatable(translationkey);
         
@@ -957,7 +957,7 @@ public class McHelper {
                     "imm_ptl.a_dimension_of",
                     modName != null ? modName : namespace
                 )
-                .append(" (" + dimension.location() + ")");
+                .append(" (" + dimension.identifier() + ")");
         }
         
         return component;

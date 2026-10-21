@@ -278,7 +278,7 @@ public abstract class MixinClientPacketListener implements IEClientPlayNetworkHa
         ClientboundLevelChunkWithLightPacket packet, CallbackInfo ci
     ) {
         if (IPGlobal.chunkPacketDebug) {
-            LOGGER.info("Chunk Load Packet {} {} {}", level.dimension().location(), packet.getX(), packet.getZ());
+            LOGGER.info("Chunk Load Packet {} {} {}", level.dimension().identifier(), packet.getX(), packet.getZ());
         }
     }
     

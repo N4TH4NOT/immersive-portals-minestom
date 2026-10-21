@@ -114,7 +114,7 @@ public class RenderStates {
         updateViewBobbingFactor(cameraEntity);
         
         basicProjectionMatrix = null;
-        originalCamera = MyRenderHelper.client.gameRenderer.getMainCamera();
+        originalCamera = MyRenderHelper.client.gameRenderer.mainCamera();
         
         updateIsLaggy();
         

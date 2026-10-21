@@ -6,7 +6,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.object.builder.v1.block.FabricBlockSettings;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
@@ -80,57 +80,57 @@ public class PeripheralModMain {
         
     }
     
-    public static void registerItems(BiConsumer<ResourceLocation, Item> regFunc) {
+    public static void registerItems(BiConsumer<Identifier, Item> regFunc) {
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals", "portal_helper"),
+            McHelper.newIdentifier("immersive_portals", "portal_helper"),
             portalHelperBlockItem
         );
         
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals:command_stick"),
+            McHelper.newIdentifier("immersive_portals:command_stick"),
             CommandStickItem.instance
         );
         
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals:portal_wand"),
+            McHelper.newIdentifier("immersive_portals:portal_wand"),
             PortalWandItem.instance
         );
     }
     
-    public static void registerBlocks(BiConsumer<ResourceLocation, Block> regFunc) {
+    public static void registerBlocks(BiConsumer<Identifier, Block> regFunc) {
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals", "portal_helper"),
+            McHelper.newIdentifier("immersive_portals", "portal_helper"),
             portalHelperBlock
         );
     }
     
     public static void registerChunkGenerators(
-        BiConsumer<ResourceLocation, MapCodec<? extends ChunkGenerator>> regFunc
+        BiConsumer<Identifier, MapCodec<? extends ChunkGenerator>> regFunc
     ) {
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals:error_terrain_generator"),
+            McHelper.newIdentifier("immersive_portals:error_terrain_generator"),
             ErrorTerrainGenerator.MAP_CODEC
         );
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals:normal_skyland_generator"),
+            McHelper.newIdentifier("immersive_portals:normal_skyland_generator"),
             NormalSkylandGenerator.MAP_CODEC
         );
     }
     
     public static void registerBiomeSources(
-        BiConsumer<ResourceLocation, MapCodec<? extends BiomeSource>> regFunc
+        BiConsumer<Identifier, MapCodec<? extends BiomeSource>> regFunc
     ) {
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals:chaos_biome_source"),
+            McHelper.newIdentifier("immersive_portals:chaos_biome_source"),
             ChaosBiomeSource.MAP_CODEC
         );
     }
     
     public static void registerCreativeTabs(
-        BiConsumer<ResourceLocation, CreativeModeTab> regFunc
+        BiConsumer<Identifier, CreativeModeTab> regFunc
     ) {
         regFunc.accept(
-            McHelper.newResourceLocation("immersive_portals", "general"),
+            McHelper.newIdentifier("immersive_portals", "general"),
             TAB
         );
     }

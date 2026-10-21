@@ -383,7 +383,7 @@ public class CrossPortalEntityRenderer {
             if (collidingPortal != null && !(entity instanceof LocalPlayer)) {
                 if (renderingPortal instanceof Portal) {
                     if (!Portal.isReversePortal(collidingPortal, ((Portal) renderingPortal))) {
-                        Vec3 cameraPos = PortalRenderer.client.gameRenderer.getMainCamera().getPosition();
+                        Vec3 cameraPos = PortalRenderer.client.gameRenderer.mainCamera().position();
                         
                         boolean isHidden = cameraPos.subtract(collidingPortal.getOriginPos())
                             .dot(collidingPortal.getNormal()) < 0;
@@ -412,7 +412,7 @@ public class CrossPortalEntityRenderer {
         
         double distanceToCamera =
             getRenderingCameraPos(entity)
-                .distanceTo(client.gameRenderer.getMainCamera().getPosition());
+                .distanceTo(client.gameRenderer.mainCamera().position());
         //avoid rendering player too near and block view except mirror
         return distanceToCamera > 1 || PortalRendering.isRenderingOddNumberOfMirrors();
     }

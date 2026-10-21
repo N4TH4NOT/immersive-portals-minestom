@@ -13,7 +13,7 @@ import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.commands.CommandBuildContext;
@@ -612,7 +612,7 @@ public class PortalCommand {
                             Direction facing = Direction.getNearest(
                                 viewVector.x, viewVector.y, viewVector.z
                             );
-                            Vec3 offset = Vec3.atLowerCornerOf(facing.getNormal()).scale(distance);
+                            Vec3 offset = Vec3.atLowerCornerOf(facing.getUnitVec3i()).scale(distance);
                             portal.setPos(
                                 portal.getX() + offset.x,
                                 portal.getY() + offset.y,
@@ -643,7 +643,7 @@ public class PortalCommand {
                             Direction facing = Direction.getNearest(
                                 viewVector.x, viewVector.y, viewVector.z
                             );
-                            Vec3 offset = Vec3.atLowerCornerOf(facing.getNormal()).scale(distance);
+                            Vec3 offset = Vec3.atLowerCornerOf(facing.getUnitVec3i()).scale(distance);
                             
                             portal.setDestination(portal.getDestPos().add(
                                 portal.transformLocalVecNonScale(offset)
@@ -1100,7 +1100,7 @@ public class PortalCommand {
         
         AABB portalBox = new AABB(0, 0, 0, 0, 0, 0);
         for (Direction direction : Direction.values()) {
-            IntBox outerSurface = boxArea.getSurfaceLayer(direction).getMoved(direction.getNormal());
+            IntBox outerSurface = boxArea.getSurfaceLayer(direction).getMoved(direction.getUnitVec3i());
             AABB collisionBox = McHelper.getWallBox(world, outerSurface);
             if (collisionBox == null) {
                 collisionBox = outerSurface.toRealNumberBox();
@@ -1783,7 +1783,7 @@ public class PortalCommand {
                             Vec3 toPos = Vec3Argument.getVec3(context, "toPos");
                             Direction.Axis axis = AxisArgumentType.getAxis(context, "axis");
                             Vec3 axisVec = Vec3.atLowerCornerOf(
-                                Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE).getNormal()
+                                Direction.fromAxisAndDirection(axis, Direction.AxisDirection.POSITIVE).getUnitVec3i()
                             );
                             
                             Vec3 delta = toPos.subtract(fromPos);
@@ -1859,9 +1859,9 @@ public class PortalCommand {
         Vec3 boxSize = Helper.getBoxSize(box);
         Vec3 boxCenter = box.getCenter();
         for (Direction face : Direction.values()) {
-            Vec3 facingVec = Vec3.atLowerCornerOf(face.getNormal());
+            Vec3 facingVec = Vec3.atLowerCornerOf(face.getUnitVec3i());
             for (Direction sideDirection : Helper.getAnotherFourDirections(face.getAxis())) {
-                Vec3 sideDirectionVec = Vec3.atLowerCornerOf(sideDirection.getNormal());
+                Vec3 sideDirectionVec = Vec3.atLowerCornerOf(sideDirection.getUnitVec3i());
                 Vec3 edgeCenter = facingVec.scale(0.5)
                     .add(sideDirectionVec.scale(0.5))
                     .multiply(boxSize)

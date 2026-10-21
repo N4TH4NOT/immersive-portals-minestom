@@ -402,6 +402,24 @@ public final class NativeWorldRenderer {
                             }
                             return false;
                         });
+        var idle =
+                SCENES.entrySet().stream()
+                        .filter(
+                                entry ->
+                                        entry.getValue().ownsGameRenderer
+                                                && entry.getValue().lastUsedFrame
+                                                        < RenderStates.frameIndex)
+                        .sorted(
+                                java.util.Comparator.comparingLong(
+                                        entry -> entry.getValue().lastUsedFrame))
+                        .toList();
+        int excess =
+                idle.size() - Math.max(0, qouteall.imm_ptl.core.IPCGlobal.maxIdleChunkRendererNum);
+        for (int i = 0; i < excess; i++) {
+            var entry = idle.get(i);
+            SCENES.remove(entry.getKey());
+            entry.getValue().close();
+        }
     }
 
     /** Shaderpack reloads invalidate the pipelines owned by offscreen renderers as well. */
@@ -420,15 +438,27 @@ public final class NativeWorldRenderer {
     }
 
     public static void chunkChanged(ClientLevel world, long position, boolean loaded) {
-        for (Scene scene : SCENES.values())
-            if (scene.world == world) {
-                (loaded ? scene.loaded : scene.unloaded).add(position);
-                (loaded ? scene.unloaded : scene.loaded).remove(position);
-                int x = net.minecraft.world.level.ChunkPos.getX(position),
-                        z = net.minecraft.world.level.ChunkPos.getZ(position);
-                for (int y = world.getMinSectionY(); y < world.getMaxSectionY(); y++)
-                    scene.extractor.setSectionDirtyWithNeighbors(x, y, z);
-            }
+        boolean previous = propagatingDirty;
+        propagatingDirty = true;
+        try {
+            for (Scene scene : SCENES.values())
+                if (scene.world == world) {
+                    (loaded ? scene.loaded : scene.unloaded).add(position);
+                    (loaded ? scene.unloaded : scene.loaded).remove(position);
+                    int x = net.minecraft.world.level.ChunkPos.getX(position),
+                            z = net.minecraft.world.level.ChunkPos.getZ(position);
+                    withContext(
+                            scene,
+                            () -> {
+                                for (int y = world.getMinSectionY();
+                                        y < world.getMaxSectionY();
+                                        y++) scene.extractor.setSectionDirtyWithNeighbors(x, y, z);
+                                return null;
+                            });
+                }
+        } finally {
+            propagatingDirty = previous;
+        }
     }
 
     public static void applyChunkChanges(
@@ -464,12 +494,17 @@ public final class NativeWorldRenderer {
 
     public static void markSectionDirty(
             LevelExtractor source, ClientLevel world, int x, int y, int z) {
-        if (propagatingDirty) return;
+        if (propagatingDirty || reloading) return;
         propagatingDirty = true;
         try {
             for (Scene scene : SCENES.values())
                 if (scene.world == world && scene.extractor != source)
-                    scene.extractor.setSectionDirty(x, y, z);
+                    withContext(
+                            scene,
+                            () -> {
+                                scene.extractor.setSectionDirty(x, y, z);
+                                return null;
+                            });
         } finally {
             propagatingDirty = false;
         }

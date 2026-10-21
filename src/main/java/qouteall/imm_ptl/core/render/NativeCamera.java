@@ -13,6 +13,8 @@ import qouteall.q_misc_util.my_util.Plane;
 
 /** A camera owns its projection; clipping never mutates its parent's matrix. */
 public final class NativeCamera extends Camera {
+    private final ClientLevel world;
+    private final boolean caveGraphSafe;
     private final Matrix4f view;
     private final Matrix4f projection;
     private final Frustum frustum;
@@ -31,6 +33,23 @@ public final class NativeCamera extends Camera {
             int height,
             float far,
             boolean zeroToOne) {
+        this.world = world;
+        var active =
+                qouteall.imm_ptl.core.render.context_management.PortalRendering.isRendering()
+                        ? qouteall.imm_ptl.core.render.context_management.PortalRendering
+                                .getRenderingPortal()
+                        : null;
+        // The native cave graph assumes a physical, unscaled camera in a connected room.
+        // Transformed/volumetric views still use portal frustum and GPU occlusion culling.
+        caveGraphSafe =
+                active == null
+                        || ((active.getRotation() == null
+                                        || qouteall.q_misc_util.my_util.DQuaternion.isClose(
+                                                active.getRotation(),
+                                                qouteall.q_misc_util.my_util.DQuaternion.identity))
+                                && !active.hasScaling()
+                                && !(active instanceof qouteall.imm_ptl.core.portal.Mirror)
+                                && active.getPortalShape().isPlanar());
         this.view = new Matrix4f(view);
         this.projection = new Matrix4f(projection);
         this.flipX = this.view.determinant3x3() < 0;
@@ -40,7 +59,16 @@ public final class NativeCamera extends Camera {
         setLevel(world);
         setEntity(parent.entity());
         setPosition(position);
-        setRotation(parent.xRot(), parent.yRot());
+        Vector3f forward =
+                this.view
+                        .invert(new Matrix4f())
+                        .transformDirection(new Vector3f(0, 0, -1))
+                        .normalize();
+        setRotation(
+                (float)
+                        -java.lang.Math.toDegrees(
+                                java.lang.Math.asin(java.lang.Math.clamp(forward.y, -1, 1))),
+                (float) java.lang.Math.toDegrees(java.lang.Math.atan2(-forward.x, forward.z)));
         rotation().setFromUnnormalized(this.view).conjugate().normalize();
         ((NativeCameraAccess) (Object) this).ip_setupPerspective(.05f, far, fov, width, height);
         // Visibility uses a finite, conventional depth range. Expanding the native
@@ -56,7 +84,10 @@ public final class NativeCamera extends Camera {
             cullProjection = TransformationManager.getIsometricCullingProjection();
         frustum = new Frustum(this.view, cullProjection);
         frustum.prepare(position.x, position.y, position.z);
-        if (clip != null) clipProjection(this.projection, this.view, position, clip, zeroToOne);
+        if (clip != null
+                && qouteall.imm_ptl.core.IPGlobal.enableClippingMechanism
+                && qouteall.imm_ptl.core.IPCGlobal.useFrontClipping)
+            clipProjection(this.projection, this.view, position, clip, zeroToOne);
     }
 
     public static void clipProjection(
@@ -145,7 +176,13 @@ public final class NativeCamera extends Camera {
         state.projectionMatrix.set(projection);
         state.viewRotationMatrix.set(view);
         state.cullFrustum.set(frustum);
-        state.smartCull = false;
+        // A transformed camera can lie inside a wall behind the destination aperture.
+        // In that case the vanilla cave graph has no usable seed: keep the view conservative.
+        state.smartCull =
+                MyGameRenderer.enablePortalCaveCulling
+                        && caveGraphSafe
+                        && net.minecraft.client.Minecraft.getInstance().smartCull
+                        && !world.getBlockState(blockPosition()).isSolidRender();
         state.depthFar = far;
         state.orientation.set(rotation());
     }

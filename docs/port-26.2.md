@@ -7,6 +7,8 @@ Complément du 21 octobre : API de traversée explicite des entités Minestom et
 interactions distantes de blocs/entités, y compris à travers plusieurs portails.
 Les optimisations de visibilité, les modes de rendu et les réglages natifs ont
 également été repris ; leur fonctionnement est décrit dans `rendering-26.2.md`.
+Gravity Changer Unofficial Port a ensuite été identifié et intégré, y compris
+au pont Minestom ; voir [`gravity-26.2.md`](gravity-26.2.md).
 
 ## Fonctions conservées et adaptations
 
@@ -24,6 +26,7 @@ Les optimisations de visibilité, les modes de rendu et les réglages natifs ont
 | Mondes distants | Chunks, lumières, entités, particules, attributs d’environnement, cycle de vie et rechargement des ressources. |
 | Téléportation et collisions | Gestion native des joueurs, autres entités, véhicules, interpolation et collisions à travers les ouvertures. |
 | Taille physique | Attribut Minecraft `SCALE`, modificateur `iportal:scaling`, préservation des autres modificateurs et de la position des yeux. |
+| Gravité | Adaptateur Gravity Changer 26.2 ; six directions et intensité, référentiels des yeux et du regard, traversées et états synchronisés avec Minestom. |
 | Réseau Fabric | Payloads et codecs 26.2 ; redirection par dimension et synchronisation des attachements Fabric. |
 | Interactions et conteneurs | Portée à travers les portails, préservation des contrôles d’identité et de validité du bloc. |
 | Génération, cadres, portails cassables | API de chunks et hauteur de monde 26.2 ; correction de la borne inclusive de `FastBlockAccess`. |
@@ -52,7 +55,7 @@ natives correspondantes.
 | Cardinal Components API | 8.0.1 | Adaptateur de synchronisation conservé ; chargement client et serveur vérifié. |
 | Lithium | 0.25.3 | Ancienne option inexistante supprimée ; exclusion `combined_heightmap_update` conservée. |
 | DimLib | Aucune publication 26.2 trouvée | Enregistrement dynamique des dimensions alternatives exclu ; générateurs conservés pour les datapacks. |
-| Gravity Changer / Gravity API Fork | Aucune publication 26.2 trouvée | Transformation de gravité exclue. Les rotations géométriques restent disponibles. |
+| Gravity Changer Unofficial Port | 1.5.2-beta.5-mc26.2 | Intégration Fabric et Minestom ; utilise les sources MIT de la branche 26.2 de NightEpiphany. |
 | Pehkui | Aucune publication 26.2 trouvée | Aucune dépendance ; la taille physique fonctionne par l’attribut natif. |
 | Flywheel / Porting Lib / Requiem | Aucune publication 26.2 trouvée | Intégrations historiques exclues. |
 
@@ -65,7 +68,7 @@ utilisateurs ne font pas partie du scénario de validation.
 ## Vérifications exécutées
 
 - `./gradlew build validateAccessWidener` : compilation, JAR du mod, sources,
-  modules Minestom/protocole, distribution de l’exemple et 24 tests JUnit réussis.
+  modules Minestom/protocole, distribution de l’exemple et 32 tests JUnit réussis.
 - Contrôle des cibles, champs et signatures des mixins contre les classes 26.2,
   complété par le chargement réel du client et du serveur.
 - Serveur Fabric dédié + client OpenGL et Vulkan : monde distant, traversée,
@@ -89,6 +92,9 @@ utilisateurs ne font pas partie du scénario de validation.
   et de culling. Le scénario attend aussi les images réellement rendues pendant
   la compilation initiale des shaders.
 - Ouverture des interfaces Cloth Config et d’empilement des dimensions.
+- Gravité : les six directions et la caméra, traversée avec rotation de gravité,
+  intensité conservée, entité distante et correction après refus ; interaction
+  distante depuis un mur contre Minestom. Les commandes figurent dans `gravity-26.2.md`.
 - Intersections géométriques, quaternion et échelle, limites du codec, NBT,
   fragments réordonnés/dupliqués, ouvertures triangulaires et portails en volume
   couverts par les tests unitaires, ainsi que les résultats de visibilité

@@ -32,15 +32,13 @@ public class IPortalInitialScreen extends Screen {
         super(Component.empty());
         this.onClose = onClose;
         
-        this.minecraft = Minecraft.getInstance();
-        this.font = minecraft.font;
         
         prevButton = Button.builder(
             Component.translatable("iportal.initial_screen.prev"),
             button -> onPrevious()
         ).build();
         
-        pageNumberWidget = new StringWidget(
+        pageNumberWidget = new CenteredStringWidget(
             Component.empty(),
             font
         );
@@ -56,10 +54,10 @@ public class IPortalInitialScreen extends Screen {
             30, 30
         );
         
-        titleWidget = new StringWidget(
+        titleWidget = new CenteredStringWidget(
             Component.translatable("iportal.initial_screen.title"),
             font
-        ).alignCenter();
+        );
         
         contentWidget = new MultiLineTextWidget(
             Component.empty(),
@@ -114,7 +112,6 @@ public class IPortalInitialScreen extends Screen {
         contentWidget.setMaxWidth(this.width - 40);
         pageNumberWidget.setWidth(50);
         pageNumberWidget.setHeight(iKnowButton.getHeight());
-        pageNumberWidget.alignCenter();
         titleWidget.setHeight(iconWidget.getHeight());
         
         addRenderableWidget(prevButton);
@@ -143,5 +140,11 @@ public class IPortalInitialScreen extends Screen {
         layout.arrangeElements();
         
         updateUiStatus(currentPageIndex);
+    }
+    private static final class CenteredStringWidget extends StringWidget {
+        CenteredStringWidget(Component text, net.minecraft.client.gui.Font font) { super(text,font); }
+        @Override public void visitLines(net.minecraft.client.gui.ActiveTextCollector output) {
+            output.accept(getX()+(getWidth()-getFont().width(getMessage()))/2, getY()+(getHeight()-9)/2, getMessage());
+        }
     }
 }

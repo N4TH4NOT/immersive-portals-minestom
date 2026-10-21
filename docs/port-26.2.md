@@ -5,16 +5,21 @@ Vérification du 20 octobre 2026. La base est la branche amont `1.21` au commit
 la branche de travail. Leur revue figure dans `upstream-1.21-review.md`.
 Complément du 21 octobre : API de traversée explicite des entités Minestom et
 interactions distantes de blocs/entités, y compris à travers plusieurs portails.
+Les optimisations de visibilité, les modes de rendu et les réglages natifs ont
+également été repris ; leur fonctionnement est décrit dans `rendering-26.2.md`.
 
 ## Fonctions conservées et adaptations
 
 | Domaine | Adaptation 26.2 |
 | --- | --- |
 | Portails, miroirs, formes planes et en volume | Maillages natifs et composition GPU avec profondeur inversée ; formes triangulées conservées. |
-| Récursion, vues fusionnées, caméra | Contextes natifs isolés pour chaque vue ; découpage oblique, réflexion, rotation, changement d’échelle et troisième personne. |
+| Récursion, vues fusionnées, caméra | Contextes natifs isolés ; découpage oblique et par fragment, réflexion, rotation, changement d’échelle et troisième personne. |
 | Entités visibles pendant la traversée | Extraction des états natifs et passes de corps découpées de part et d’autre du portail. |
 | Ressources GPU | Projections copiées, restitution des états après chaque vue, rotation des tampons en fin d’image et éviction des contextes inutilisés. |
 | Vulkan | API Blaze3D native de 26.2, sans appels OpenGL dans le chemin de rendu principal. |
+| Occlusion et prédiction de visibilité | Couverture testée contre la profondeur, réduction GPU et lecture de quatre octets ; résultats séparés par vue, invalidés lors des changements de géométrie et de caméra. |
+| Culling avancé | Frustums natifs et snapshots Sodium ; filtrage conservateur des branches d’octree et actualisation des ouvertures animées. |
+| Modes de rendu | Masques de stencil en texture en mode normal, composition directe du maillage en compatibilité, vue entière en debug et prépasses groupées pour Iris expérimental. |
 | Sodium / Iris | Contextes de terrain et pipelines isolés ; cibles de shaders Iris adaptées et invalidées au rechargement. |
 | Mondes distants | Chunks, lumières, entités, particules, attributs d’environnement, cycle de vie et rechargement des ressources. |
 | Téléportation et collisions | Gestion native des joueurs, autres entités, véhicules, interpolation et collisions à travers les ouvertures. |
@@ -28,16 +33,13 @@ interactions distantes de blocs/entités, y compris à travers plusieurs portail
 | Minestom | Modules séparés de protocole et de service, négociation, streaming borné, validation serveur et exemple exécutable. |
 
 Une partie des anciens fichiers de mixins OpenGL a été supprimée : leurs
-responsabilités sont reprises par les contextes et passes GPU natifs. Les
-anciennes variantes de renderer conservées dans l’API délèguent au moteur natif.
-
-La parité des anciennes optimisations n'est pas complète : les requêtes
-d'occlusion GPU et leur prédiction de visibilité n'ont pas d'équivalent dans ce
-portage. Les anciens branchements du culling avancé propre au mod ont été
-retirés. Les options historiques correspondantes peuvent encore être présentes
-sans effet. Les variantes stencil et Iris ne constituent plus des algorithmes
-de rendu distincts. Ces limites sont indépendantes des exclusions de mods
-optionnels ci-dessous.
+responsabilités sont reprises par les contextes et passes GPU natifs. L’API
+26.2 expose uniquement des requêtes GPU d’horodatage et ne permet pas de régler
+les opérations du stencil matériel. L’occlusion et le stencil des portails sont
+donc implémentés avec des masques et des passes natives, sur les deux backends.
+Les anciennes options de ressources OpenGL sans objet dans cette architecture
+ont été retirées, et les réglages applicables sont raccordés aux fonctions
+natives correspondantes.
 
 ## Compatibilité optionnelle
 
@@ -63,7 +65,7 @@ utilisateurs ne font pas partie du scénario de validation.
 ## Vérifications exécutées
 
 - `./gradlew build validateAccessWidener` : compilation, JAR du mod, sources,
-  modules Minestom/protocole, distribution de l’exemple et tests JUnit.
+  modules Minestom/protocole, distribution de l’exemple et 24 tests JUnit réussis.
 - Contrôle des cibles, champs et signatures des mixins contre les classes 26.2,
   complété par le chargement réel du client et du serveur.
 - Serveur Fabric dédié + client OpenGL et Vulkan : monde distant, traversée,
@@ -80,10 +82,17 @@ utilisateurs ne font pas partie du scénario de validation.
   couverts par quatre tests supplémentaires.
 - Sodium + Iris avec pack GLSL actif : scénario de formes avancées, GUI,
   traversée et arrêt complet, sans réutilisation invalide des tampons GPU.
+- Scénario ciblé sous OpenGL et Vulkan, avec Sodium et avec Iris sous OpenGL :
+  mur opaque, arrêt du rendu de la vue masquée, réapparition après retrait du
+  mur, prédiction désactivée, modes normal/compatibilité/debug/aucun, variantes
+  Iris et rechargement. Les captures sont examinées en plus des compteurs GPU
+  et de culling. Le scénario attend aussi les images réellement rendues pendant
+  la compilation initiale des shaders.
 - Ouverture des interfaces Cloth Config et d’empilement des dimensions.
 - Intersections géométriques, quaternion et échelle, limites du codec, NBT,
   fragments réordonnés/dupliqués, ouvertures triangulaires et portails en volume
-  couverts par les tests unitaires.
+  couverts par les tests unitaires, ainsi que les résultats de visibilité
+  absents, obsolètes, réordonnés ou issus d’une géométrie différente.
 
 Les tests graphiques utilisent Xvfb et Mesa llvmpipe, dont le véritable backend
 Vulkan `1.4.305` de Mesa `25.0.7`, sur un environnement cloud sans GPU physique.
@@ -143,3 +152,6 @@ deux serveurs de test sur le même port ni plusieurs clients dans le même
 répertoire simultanément. Les tentatives d’authentification Mojang hors ligne
 peuvent échouer dans cet environnement ; les serveurs de validation locaux
 n’utilisent pas cette authentification.
+
+Les commandes du scénario de visibilité et la correspondance des réglages
+historiques figurent dans [`rendering-26.2.md`](rendering-26.2.md).

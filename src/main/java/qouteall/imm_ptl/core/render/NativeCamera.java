@@ -1,0 +1,152 @@
+package qouteall.imm_ptl.core.render;
+
+import net.minecraft.client.Camera;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.world.phys.Vec3;
+
+import org.joml.*;
+
+import qouteall.imm_ptl.core.mixin.client.render.NativeCameraAccess;
+import qouteall.q_misc_util.my_util.Plane;
+
+/** A camera owns its projection; clipping never mutates its parent's matrix. */
+public final class NativeCamera extends Camera {
+    private final Matrix4f view;
+    private final Matrix4f projection;
+    private final Frustum frustum;
+    private final float fov;
+    private final float far;
+    public final boolean flipX;
+
+    public NativeCamera(
+            ClientLevel world,
+            Vec3 position,
+            Camera parent,
+            Matrix4fc view,
+            Matrix4fc projection,
+            Plane clip,
+            int width,
+            int height,
+            float far,
+            boolean zeroToOne) {
+        this.view = new Matrix4f(view);
+        this.projection = new Matrix4f(projection);
+        this.flipX = this.view.determinant3x3() < 0;
+        if (flipX) this.view.scaleLocal(-1, 1, 1);
+        this.fov = parent.getFov();
+        this.far = far;
+        setLevel(world);
+        setEntity(parent.entity());
+        setPosition(position);
+        setRotation(parent.xRot(), parent.yRot());
+        rotation().setFromUnnormalized(this.view).conjugate().normalize();
+        ((NativeCameraAccess) (Object) this).ip_setupPerspective(.05f, far, fov, width, height);
+        // Visibility uses a finite, conventional depth range. Expanding the native
+        // culling frustum with an oblique reverse-Z projection can otherwise loop forever.
+        Matrix4f cullProjection =
+                new Matrix4f()
+                        .perspective(
+                                (float) java.lang.Math.toRadians(fov),
+                                (float) width / height,
+                                .05f,
+                                far);
+        if (TransformationManager.isIsometricView)
+            cullProjection = TransformationManager.getIsometricCullingProjection();
+        frustum = new Frustum(this.view, cullProjection);
+        frustum.prepare(position.x, position.y, position.z);
+        if (clip != null) clipProjection(this.projection, this.view, position, clip, zeroToOne);
+    }
+
+    public static void clipProjection(
+            Matrix4f projection, Matrix4fc view, Vec3 camera, Plane plane, boolean zeroToOne) {
+        Vec3 relative = plane.pos().subtract(camera);
+        Vector4f equation =
+                new Vector4f(
+                        (float) plane.normal().x,
+                        (float) plane.normal().y,
+                        (float) plane.normal().z,
+                        (float) -plane.normal().dot(relative));
+        new Matrix4f(view).invert().transpose().transform(equation);
+        Vector4f corner =
+                new Vector4f(
+                        java.lang.Math.copySign(1, equation.x),
+                        java.lang.Math.copySign(1, equation.y),
+                        zeroToOne ? 0 : -1,
+                        1);
+        new Matrix4f(projection).invert().transform(corner);
+        float denominator = equation.dot(corner);
+        if (!Float.isFinite(denominator) || denominator <= 1e-6f) return;
+        equation.mul((zeroToOne ? 1 : 2) / denominator);
+        projection
+                .m02(projection.m03() - equation.x)
+                .m12(projection.m13() - equation.y)
+                .m22(projection.m23() - equation.z)
+                .m32(projection.m33() - equation.w);
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return true;
+    }
+
+    @Override
+    public boolean isDetached() {
+        return true;
+    }
+
+    @Override
+    public float getFov() {
+        return fov;
+    }
+
+    @Override
+    public Frustum getCullFrustum() {
+        return frustum;
+    }
+
+    @Override
+    public Matrix4f getViewRotationMatrix(Matrix4f out) {
+        return out.set(view);
+    }
+
+    @Override
+    public Matrix4f getViewRotationProjectionMatrix(Matrix4f out) {
+        return out.set(projection).mul(view);
+    }
+
+    @Override
+    public Vector3fc forwardVector() {
+        return view.invert(new Matrix4f()).transformDirection(new Vector3f(0, 0, -1)).normalize();
+    }
+
+    @Override
+    public Vector3fc panoramicForwards() {
+        return forwardVector();
+    }
+
+    @Override
+    public Vector3fc upVector() {
+        return view.invert(new Matrix4f()).transformDirection(new Vector3f(0, 1, 0)).normalize();
+    }
+
+    @Override
+    public Vector3fc leftVector() {
+        return view.invert(new Matrix4f()).transformDirection(new Vector3f(1, 0, 0)).normalize();
+    }
+
+    @Override
+    public void extractRenderState(CameraRenderState state, float partialTick) {
+        super.extractRenderState(state, partialTick);
+        state.initialized = true;
+        state.pos = position();
+        state.blockPos = blockPosition();
+        state.projectionMatrix.set(projection);
+        state.viewRotationMatrix.set(view);
+        state.cullFrustum.set(frustum);
+        state.smartCull = false;
+        state.depthFar = far;
+        state.orientation.set(rotation());
+    }
+}

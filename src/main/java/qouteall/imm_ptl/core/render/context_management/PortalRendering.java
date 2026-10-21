@@ -14,7 +14,6 @@ import qouteall.imm_ptl.core.IPGlobal;
 import qouteall.imm_ptl.core.portal.Mirror;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.shape.BoxPortalShape;
-import qouteall.imm_ptl.core.render.VisibleSectionDiscovery;
 import qouteall.imm_ptl.core.render.renderer.PortalRenderer;
 import qouteall.q_misc_util.my_util.Plane;
 
@@ -121,7 +120,7 @@ public class PortalRendering {
     }
     
     /**
-     * This only has effects with Sodium. In vanilla it uses {@link VisibleSectionDiscovery}.
+     * This only has effects with Sodium. In vanilla it uses native extraction.
      * <br>
      * As I tested, cave culling can optimize 20% when you are very close to the portal.
      * But its optimization is negligible when you are 5 blocks from the portal.

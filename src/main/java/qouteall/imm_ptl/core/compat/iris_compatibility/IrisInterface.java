@@ -24,14 +24,11 @@ public class IrisInterface {
             return false;
         }
         
-        public Object getPipeline(LevelRenderer worldRenderer) {
-            return null;
-        }
-        
-        public void setPipeline(LevelRenderer worldRenderer, Object pipeline) {
-        
-        }
-        
+        public Runnable pushContext(Object key,boolean isolated){return ()->{};}
+        public void closeContext(Object key){}
+        public void finishOffscreen(){}
+        public void withCompositeTarget(com.mojang.blaze3d.pipeline.RenderTarget target,java.util.function.Consumer<com.mojang.blaze3d.pipeline.RenderTarget> draw){draw.accept(target);}
+
         public void reloadPipelines() {}
     
         @Nullable
@@ -41,12 +38,11 @@ public class IrisInterface {
     }
     
     public static class OnIrisPresent extends Invoker {
-        
-        private Field worldRendererPipelineField = Helper.noError(() -> {
-            Field field = LevelRenderer.class.getDeclaredField("pipeline");
-            field.setAccessible(true);
-            return field;
-        });
+        @Override public Runnable pushContext(Object key,boolean isolated){return IrisNativeContext.push(key,isolated);}
+        @Override public void closeContext(Object key){IrisNativeContext.close(key);}
+        @Override public void finishOffscreen(){IrisNativeContext.finish();}
+        @Override public void withCompositeTarget(com.mojang.blaze3d.pipeline.RenderTarget target,java.util.function.Consumer<com.mojang.blaze3d.pipeline.RenderTarget> draw){IrisNativeContext.composite(target,draw);}
+
         
         @Override
         public boolean isIrisPresent() {
@@ -61,23 +57,6 @@ public class IrisInterface {
         @Override
         public boolean isRenderingShadowMap() {
             return ShadowRenderer.ACTIVE;
-        }
-        
-        @Override
-        public Object getPipeline(LevelRenderer worldRenderer) {
-            return Helper.noError(() ->
-                ((WorldRenderingPipeline) worldRendererPipelineField.get(worldRenderer))
-            );
-        }
-        
-        // the pipeline switching is unnecessary when using shaders
-        // but still necessary with shaders disabled
-        @Override
-        public void setPipeline(LevelRenderer worldRenderer, Object pipeline) {
-            Helper.noError(() -> {
-                worldRendererPipelineField.set(worldRenderer, pipeline);
-                return null;
-            });
         }
         
         @Override

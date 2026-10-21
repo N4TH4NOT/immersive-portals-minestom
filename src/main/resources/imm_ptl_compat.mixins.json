@@ -4,17 +4,18 @@
   "compatibilityLevel": "JAVA_25",
   "plugin": "qouteall.imm_ptl.core.compat.IPCompatMixinPlugin",
   "mixins": [
-    "cardinal_comp.MixinCardinalCompComponentKey",
-    "iris.MixinIrisClearPass",
-    "iris.MixinIrisFinalPassRenderer",
-    "iris.MixinIrisIris",
-    "iris.MixinIrisRenderingPipeline",
-    "iris.MixinIrisShadowRenderTargets",
-    "iris.MixinIrisSodiumShader",
-    "iris.MixinIrisTransformPatcher"
+    "cardinal_comp.MixinCardinalCompComponentKey"
   ],
   "injectors": {
     "defaultRequire": 1
   },
-  "client": []
+  "client": [
+    "iris.MixinIrisNativeCommandEncoder",
+    "iris.MixinIrisNativeLifecycle",
+    "iris.IrisManagerAccess",
+    "iris.IrisWorldSettingsAccess",
+    "iris.IrisPipelineManagerAccess",
+    "iris.IrisRenderTargetsAccess",
+    "iris.IrisGlDeviceAccess"
+  ]
 }

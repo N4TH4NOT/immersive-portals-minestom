@@ -17,8 +17,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL32;
 import org.slf4j.Logger;
 import qouteall.imm_ptl.core.ducks.IEClientWorld;
 import qouteall.imm_ptl.core.platform_specific.O_O;
@@ -33,7 +31,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static org.lwjgl.opengl.GL11.GL_NO_ERROR;
 
 @Environment(EnvType.CLIENT)
 public class CHelper {
@@ -44,7 +41,7 @@ public class CHelper {
     
     public static PlayerInfo getClientPlayerListEntry() {
         return Minecraft.getInstance().getConnection().getPlayerInfo(
-            Minecraft.getInstance().player.getGameProfile().getId()
+            Minecraft.getInstance().player.getGameProfile().id()
         );
     }
     
@@ -77,21 +74,20 @@ public class CHelper {
     }
     
     public static void doCheckGlError() {
-        int errorCode = GL11.glGetError();
-        if (errorCode != GL_NO_ERROR) {
-            Helper.err("OpenGL Error" + errorCode);
-            new Throwable().printStackTrace();
+        var device=com.mojang.blaze3d.systems.RenderSystem.tryGetDevice();
+        if (device != null) for (String message:device.getLastDebugMessages()) {
+            LOGGER.warn("GPU: {}",message);
             reportedErrorNum++;
         }
     }
-    
+
     public static void printChat(String str) {
         Helper.log(str);
         printChat(Component.literal(str));
     }
     
     public static void printChat(Component text) {
-        Minecraft.getInstance().gui.getChat().addMessage(text);
+        Minecraft.getInstance().gui.hud.getChat().addClientSystemMessage(text);
     }
     
     public static void openLinkConfirmScreen(
@@ -99,7 +95,7 @@ public class CHelper {
         String link
     ) {
         Minecraft client = Minecraft.getInstance();
-        client.setScreen(new ConfirmLinkScreen(
+        client.gui.setScreen(new ConfirmLinkScreen(
             (result) -> {
                 if (result) {
                     try {
@@ -109,7 +105,7 @@ public class CHelper {
                         e.printStackTrace();
                     }
                 }
-                client.setScreen(parent);
+                client.gui.setScreen(parent);
             },
             link, true
         ));
@@ -133,18 +129,6 @@ public class CHelper {
             StableClientTimer.getStableTickTime() % unitTicks +
                 StableClientTimer.getStablePartialTicks()
         ) / (double) unitTicks;
-    }
-    
-    public static void disableDepthClamp() {
-        if (IPGlobal.enableClippingMechanism) {
-            GL11.glDisable(GL32.GL_DEPTH_CLAMP);
-        }
-    }
-    
-    public static void enableDepthClamp() {
-        if (IPGlobal.enableClippingMechanism) {
-            GL11.glEnable(GL32.GL_DEPTH_CLAMP);
-        }
     }
     
     /**

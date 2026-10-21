@@ -129,7 +129,7 @@ public class NetherPortalGeneration {
         Vec3 indicatorPos = fromShape.innerAreaBox.getCenterVec();
         
         LoadingIndicatorEntity indicatorEntity =
-            LoadingIndicatorEntity.entityType.create(fromWorld);
+            LoadingIndicatorEntity.entityType.create(fromWorld, net.minecraft.world.entity.EntitySpawnReason.LOAD);
         indicatorEntity.isValid = true;
         indicatorEntity.setPos(
             indicatorPos.x, indicatorPos.y, indicatorPos.z
@@ -171,7 +171,7 @@ public class NetherPortalGeneration {
             frameSearchingRadius :
             (fromShape.getShapeInnerLength() < 16 ? 1 : 2);
         ChunkLoader chunkLoader = new ChunkLoader(
-            new DimensionalChunkPos(toDimension, new ChunkPos(toPos)), loaderRadius
+            new DimensionalChunkPos(toDimension, ChunkPos.containing(toPos)), loaderRadius
         );
         
         ImmPtlChunkTracking.addGlobalAdditionalChunkLoader(server, chunkLoader);

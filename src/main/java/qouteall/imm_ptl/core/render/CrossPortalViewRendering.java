@@ -31,21 +31,11 @@ public class CrossPortalViewRendering {
             return false;
         }
         
-        Entity cameraEntity = client.cameraEntity;
+        Entity cameraEntity = client.getCameraEntity();
         
-        Camera camera1 = new Camera();
-        float cameraY = ((IECamera) RenderStates.originalCamera).ip_getCameraY();
-        float lastCameraY = ((IECamera) RenderStates.originalCamera).ip_getLastCameraY();
-        ((IECamera) camera1).ip_setCameraY(cameraY, lastCameraY);
-        Camera camera = camera1;
-        camera.setup(
-            client.level, cameraEntity,
-            isThirdPerson(),
-            isFrontView(),
-            RenderStates.getPartialTick()
-        );
-    
-        Vec3 realCameraPos = camera.getPosition();
+        Camera camera=RenderStates.originalCamera;
+
+        Vec3 realCameraPos = camera.position();
         Vec3 isometricAdjustedOriginalCameraPos =
             TransformationManager.getIsometricAdjustedCameraPos(camera);
         
@@ -80,7 +70,6 @@ public class CrossPortalViewRendering {
             renderingCameraPos = portal.transformPoint(realCameraPos);
         }
         
-        ((IECamera) RenderStates.originalCamera).portal_setPos(renderingCameraPos);
         
         WorldRenderInfo worldRenderInfo = new WorldRenderInfo.Builder()
             .setWorld(ClientWorldLoader.getWorld(portal.getDestDim()))
@@ -93,7 +82,11 @@ public class CrossPortalViewRendering {
             .setEnableViewBobbing(false)
             .build();
         
+        var destination=client.gameRenderer.mainRenderTarget();
         IPCGlobal.renderer.invokeWorldRendering(worldRenderInfo);
+        var source=MyGameRenderer.renderedTarget();
+        NativePortalCompositor.drawRectangle(source,destination,0,0,destination.width,destination.height,false,true);
+        destination.copyDepthFrom(source);
         
         return true;
     }
@@ -113,23 +106,21 @@ public class CrossPortalViewRendering {
     private static Vec3 getThirdPersonCameraPos(Vec3 endPos, Portal portal, Vec3 startPos) {
         Vec3 rtStart = portal.transformPoint(startPos);
         Vec3 rtEnd = portal.transformPoint(endPos);
-        assert client.cameraEntity != null;
+        assert client.getCameraEntity() != null;
         BlockHitResult blockHitResult = portal.getDestinationWorld().clip(
             new ClipContext(
                 rtStart,
                 rtEnd,
                 ClipContext.Block.VISUAL,
                 ClipContext.Fluid.NONE,
-                client.cameraEntity
+                client.getCameraEntity()
             )
         );
         
         if (blockHitResult.getType() == HitResult.Type.BLOCK) {
-            return rtStart.add(rtEnd.subtract(rtStart).normalize().scale(
-                getThirdPersonMaxDistance()
-            ));
+            return blockHitResult.getLocation().subtract(rtEnd.subtract(rtStart).normalize().scale(.05));
         }
-        
+
         return blockHitResult.getLocation();
     }
     
@@ -139,13 +130,13 @@ public class CrossPortalViewRendering {
     
     //    private static Vec3d getThirdPersonCameraPos(Portal portalHit, Camera resuableCamera) {
 //        return CHelper.withWorldSwitched(
-//            client.cameraEntity,
+//            client.getCameraEntity(),
 //            portalHit,
 //            () -> {
 //                World destinationWorld = portalHit.getDestinationWorld();
 //                resuableCamera.update(
 //                    destinationWorld,
-//                    client.cameraEntity,
+//                    client.getCameraEntity(),
 //                    true,
 //                    isInverseView(),
 //                    RenderStates.tickDelta

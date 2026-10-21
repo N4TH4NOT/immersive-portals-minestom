@@ -133,7 +133,9 @@
     "client.sync.MixinServerboundMovePlayerPacketStatusOnly",
     "client.render.NativeCameraAccess",
     "client.render.NativeGameRendererAccess",
-    "client.render.NativeLevelExtractorMixin"
+    "client.render.NativeLevelExtractorMixin",
+    "client.particle.NativeParticleEngineAccess",
+    "client.particle.NativeQuadParticleMixin"
   ],
   "injectors": {
     "defaultRequire": 1

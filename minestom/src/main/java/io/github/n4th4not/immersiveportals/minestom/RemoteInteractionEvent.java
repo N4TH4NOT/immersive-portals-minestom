@@ -70,11 +70,8 @@ public record RemoteInteractionEvent(
                                 isEntity
                                         ? Attribute.ENTITY_INTERACTION_RANGE
                                         : Attribute.BLOCK_INTERACTION_RANGE));
-        Vec3
-                eye =
-                        vector(player.getPosition())
-                                .add(new Vec3(0, PortalService.eyeHeight(player), 0)),
-                direction = vector(player.getPosition().direction());
+        Vec3 eye = service.gravity().eyePosition(player),
+                direction = service.gravity().lookDirection(player);
         double scale = 1;
         Instance world = player.getInstance();
         for (UUID id : request.path()) {
@@ -113,7 +110,7 @@ public record RemoteInteractionEvent(
                 }
             if (target == null || target == player || target.isRemoved()) return Optional.empty();
             Vec3 pos = vector(target.getPosition());
-            var box = target.getBoundingBox();
+            var box = service.gravity().boundingBox(target);
             double t =
                     rayBox(
                             eye,

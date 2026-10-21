@@ -4,8 +4,6 @@ import io.github.n4th4not.immersiveportals.protocol.*;
 
 import net.kyori.adventure.key.Key;
 import net.minestom.server.MinecraftServer;
-import net.minestom.server.coordinate.Pos;
-import net.minestom.server.coordinate.Vec;
 import net.minestom.server.entity.*;
 import net.minestom.server.entity.attribute.*;
 import net.minestom.server.event.*;
@@ -13,11 +11,11 @@ import net.minestom.server.event.instance.*;
 import net.minestom.server.event.player.*;
 import net.minestom.server.instance.*;
 import net.minestom.server.network.ConnectionState;
+import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
+import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.network.packet.server.*;
 import net.minestom.server.network.packet.server.common.PluginMessagePacket;
 import net.minestom.server.network.packet.server.play.*;
-import net.minestom.server.network.packet.client.play.ClientPlayerActionPacket;
-import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket;
 import net.minestom.server.timer.*;
 
 import java.util.*;
@@ -40,6 +38,7 @@ public final class PortalService implements AutoCloseable {
     private final ConcurrentLinkedQueue<Runnable> actions = new ConcurrentLinkedQueue<>();
     private final EventNode<Event> events = EventNode.all("immersive-portals");
     private final Task task;
+    private final PortalGravity gravity = new PortalGravity(this);
     private volatile boolean closed;
     private long tick;
     private Predicate<Player> authorization = p -> true;
@@ -51,6 +50,8 @@ public final class PortalService implements AutoCloseable {
         final UUID id = UUID.randomUUID();
         final Map<UUID, PortalDefinition> known = new HashMap<>();
         final Map<String, View> views = new HashMap<>();
+        final Map<GravityKey, SentGravity> gravitySent = new HashMap<>();
+        int features;
         boolean travelling;
         long lastTeleport = -100;
         long messageTick;
@@ -60,6 +61,10 @@ public final class PortalService implements AutoCloseable {
             this.player = player;
         }
     }
+
+    private record GravityKey(String world, int id, UUID uuid) {}
+
+    private record SentGravity(GravityState state, long tick) {}
 
     private static final class View {
         final UUID id = UUID.randomUUID();
@@ -74,6 +79,17 @@ public final class PortalService implements AutoCloseable {
     }
 
     public PortalService() {
+        events.addListener(
+                net.minestom.server.event.entity.EntityTickEvent.class,
+                event -> gravity.tick(event.getEntity()));
+        events.addListener(
+                PlayerSpawnEvent.class,
+                event ->
+                        actions.add(
+                                () -> {
+                                    Session session = sessions.get(event.getPlayer());
+                                    if (session != null) session.gravitySent.clear();
+                                }));
         events.addListener(
                 PlayerPluginMessageEvent.class,
                 event -> {
@@ -218,6 +234,15 @@ public final class PortalService implements AutoCloseable {
         return sessions.containsKey(player);
     }
 
+    public PortalGravity gravity() {
+        return gravity;
+    }
+
+    public boolean supportsGravity(Player player) {
+        Session session = sessions.get(player);
+        return session != null && (session.features & BridgeCodec.FEATURE_GRAVITY) != 0;
+    }
+
     public EventNode<Event> events() {
         return events;
     }
@@ -228,8 +253,10 @@ public final class PortalService implements AutoCloseable {
             () -> new IllegalStateException("Portal is no longer registered"));
         World source = worlds.get(portal.sourceWorld()), target = worlds.get(portal.destinationWorld());
         if (source == null || target == null || entity.getInstance() != source.instance())
-            throw new IllegalArgumentException("Entity must belong to the registered source instance");
-        return PortalEntityTeleportation.teleport(entity, portal, target.instance());
+            throw new IllegalArgumentException(
+                    "Entity must belong to the registered source instance");
+        return PortalEntityTeleportation.teleport(
+                entity, portal, target.instance(), gravity, gravity.eyePosition(entity));
     }
 
     private void validateWorlds(PortalDefinition d) {
@@ -288,6 +315,7 @@ public final class PortalService implements AutoCloseable {
                     return;
                 }
                 Session s = new Session(player);
+                s.features = hello.features();
                 sessions.put(player, s);
                 welcome(s);
                 return;
@@ -337,6 +365,7 @@ public final class PortalService implements AutoCloseable {
     private synchronized void tick() {
         if (closed) return;
         tick++;
+        gravity.cleanup();
         for (int n = 0; n < 4096; n++) {
             Runnable action = actions.poll();
             if (action == null) break;
@@ -363,12 +392,21 @@ public final class PortalService implements AutoCloseable {
                     send(s.player, new BridgeMessage.Upsert(p));
                     s.known.put(p.id(), p);
                 }
-            if (tick % 2 == 0) refreshViews(s);
+            if (tick % 2 == 0) {
+                refreshViews(s);
+                if (s.player.getInstance() != null) {
+                    for (Entity entity : s.player.getInstance().getEntities())
+                        if (entity == s.player || entity.getViewers().contains(s.player))
+                            syncGravity(s, entity, false);
+                }
+                s.gravitySent.entrySet().removeIf(e -> tick - e.getValue().tick() > 200);
+            }
         }
     }
 
     private void disconnect(Player player) {
         Session s = sessions.remove(player);
+        if (s != null) gravity.reset(player);
         if (s != null && player.isOnline()) {
             send(player, new BridgeMessage.Clear());
             for (View view : s.views.values()) send(player, new BridgeMessage.CloseView(view.id));
@@ -404,7 +442,8 @@ public final class PortalService implements AutoCloseable {
                         vec(p.getVelocity()),
                         factor,
                         p.getPosition().yaw(),
-                        p.getPosition().pitch()));
+                        p.getPosition().pitch(),
+                        gravity.get(p)));
     }
 
     private boolean tryTeleport(Session s, BridgeMessage.Teleport request) {
@@ -416,7 +455,7 @@ public final class PortalService implements AutoCloseable {
                 || tick - s.lastTeleport < 2
                 || player.getInstance() == null
                 || !player.getInstance().getDimensionName().equals(p.sourceWorld())) return false;
-        Vec3 eye = vec(player.getPosition()).add(new Vec3(0, eyeHeight(player), 0));
+        Vec3 eye = gravity.eyePosition(player);
         if (request.fromEye().subtract(eye).lengthSquared() > 16
                 || request.toEye().subtract(request.fromEye()).lengthSquared() > 64) return false;
         double t = PortalOptions.of(p).intersection(p, request.fromEye(), request.toEye());
@@ -438,47 +477,31 @@ public final class PortalService implements AutoCloseable {
             return false;
         World target = worlds.get(p.destinationWorld());
         if (target == null) return false;
-        Vec3 destEye = p.transformPoint(request.toEye());
-        double scale = PortalOptions.of(p).changesScale() ? p.scale() : 1;
-        var attribute = player.getAttribute(Attribute.SCALE);
-        Key modifier = Key.key("iportal:scaling");
-        var old = attribute.modifiers().stream().filter(m -> m.id().equals(modifier)).findFirst();
-        double oldFactor = old.map(m -> m.amount() + 1).orElse(1.0);
-        double factor = oldFactor * scale;
-        if (!Double.isFinite(factor) || factor < 1e-6 || factor > 1e6) return false;
-        attribute.addModifier(
-                new AttributeModifier(
-                        modifier, factor - 1, AttributeOperation.ADD_MULTIPLIED_TOTAL));
-        Vec3 facing = p.rotation().rotate(vec(player.getPosition().direction()));
-        Pos position =
-                new Pos(
-                        destEye.x(),
-                        destEye.y() - eyeHeight(player),
-                        destEye.z(),
-                        (float) Math.toDegrees(Math.atan2(-facing.x(), facing.z())),
-                        (float) -Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, facing.y())))));
-        Vec3 transformedVelocity = p.transformVector(vec(player.getVelocity()));
-        Vec velocity =
-                new Vec(transformedVelocity.x(), transformedVelocity.y(), transformedVelocity.z());
+        GravityState nextGravity =
+                PortalOptions.of(p).changesGravity()
+                        ? gravity.get(player).rotated(p.rotation())
+                        : gravity.get(player);
+        if (!supportsGravity(player) && !nextGravity.equals(GravityState.DEFAULT)) return false;
         s.travelling = true;
         s.lastTeleport = tick;
-        CompletableFuture<Void> future =
-                player.getInstance() == target.instance()
-                        ? player.teleport(position)
-                        : player.setInstance(target.instance(), position);
+        CompletableFuture<Void> future;
+        try {
+            future =
+                    PortalEntityTeleportation.teleport(
+                            player, p, target.instance(), gravity, request.toEye());
+        } catch (RuntimeException error) {
+            s.travelling = false;
+            return false;
+        }
         future.whenComplete(
                 (ignored, error) ->
                         actions.add(
                                 () -> {
                                     s.travelling = false;
                                     if (error != null) {
-                                        attribute.removeModifier(modifier);
-                                        old.ifPresent(attribute::addModifier);
                                         rejectTeleport(s);
                                         return;
                                     }
-                                    if (sessions.get(player) != s) return;
-                                    player.setVelocity(velocity);
                                 }));
         return true;
     }
@@ -599,7 +622,7 @@ public final class PortalService implements AutoCloseable {
                             entity.getVelocity().div(20),
                             entity.getPosition().yaw(),
                             entity.getPosition().pitch(),
-                            entity.isOnGround()));
+                            gravity.get(entity).direction() == GravityDirection.DOWN ? entity.isOnGround() : gravity.isOnGround(entity)));
             worldPacket(
                     s,
                     view,
@@ -625,12 +648,31 @@ public final class PortalService implements AutoCloseable {
                 for (var slot : EquipmentSlot.values())
                     equipment.put(slot, living.getEquipment(slot));
                 worldPacket(s, view, new EntityEquipmentPacket(entity.getEntityId(), equipment));
+                syncGravity(s, living, !view.entities.contains(entity.getEntityId()));
             }
         }
         for (int id : view.entities)
             if (!desired.contains(id)) worldPacket(s, view, new DestroyEntitiesPacket(List.of(id)));
         view.entities.clear();
         view.entities.addAll(desired);
+    }
+
+    private void syncGravity(Session session, Entity entity, boolean force) {
+        if (!(entity instanceof LivingEntity)
+                || !supportsGravity(session.player)
+                || entity.getInstance() == null) return;
+        String world = entity.getInstance().getDimensionName();
+        var key = new GravityKey(world, entity.getEntityId(), entity.getUuid());
+        var state = gravity.get(entity);
+        var old = session.gravitySent.get(key);
+        if (force || old == null || !old.state().equals(state) || tick - old.tick() >= 100) {
+            if (session.gravitySent.size() >= 4096 && !session.gravitySent.containsKey(key)) return;
+            send(
+                    session.player,
+                    new BridgeMessage.Gravity(
+                            world, entity.getEntityId(), entity.getUuid(), state));
+            session.gravitySent.put(key, new SentGravity(state, tick));
+        }
     }
 
     private void worldPacket(Session s, View view, ServerPacket packet) {
@@ -689,6 +731,7 @@ public final class PortalService implements AutoCloseable {
         if (closed) return;
         closed = true;
         task.cancel();
+        gravity.close();
         MinecraftServer.getGlobalEventHandler().removeChild(events);
         for (Session s : snapshotSessions()) disconnect(s.player);
         portals.clear();

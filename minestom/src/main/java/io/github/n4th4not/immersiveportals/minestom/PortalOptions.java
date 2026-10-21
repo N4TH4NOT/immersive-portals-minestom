@@ -45,6 +45,10 @@ public record PortalOptions(CompoundBinaryTag nbt) {
         return nbt.getBoolean("teleportChangesScale", true);
     }
 
+    public boolean changesGravity() {
+        return nbt.getBoolean("teleportChangesGravity", false);
+    }
+
     /** First entry (or exit for an inward box) through the actual aperture. */
     public double intersection(PortalDefinition portal, Vec3 from, Vec3 to) {
         var shape = nbt.getCompound("portalShape");
@@ -130,6 +134,11 @@ public record PortalOptions(CompoundBinaryTag nbt) {
 
         public Builder changesScale(boolean v) {
             tag.putBoolean("teleportChangesScale", v);
+            return this;
+        }
+
+        public Builder changesGravity(boolean v) {
+            tag.putBoolean("teleportChangesGravity", v);
             return this;
         }
 

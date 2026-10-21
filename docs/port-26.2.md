@@ -3,6 +3,8 @@
 Vérification du 20 octobre 2026. La base est la branche amont `1.21` au commit
 `2b1d3546` : les 69 commits qui la séparent du fork 1.20.6 sont déjà intégrés dans
 la branche de travail. Leur revue figure dans `upstream-1.21-review.md`.
+Complément du 21 octobre : API de traversée explicite des entités Minestom et
+interactions distantes de blocs/entités, y compris à travers plusieurs portails.
 
 ## Fonctions conservées et adaptations
 
@@ -28,6 +30,14 @@ la branche de travail. Leur revue figure dans `upstream-1.21-review.md`.
 Une partie des anciens fichiers de mixins OpenGL a été supprimée : leurs
 responsabilités sont reprises par les contextes et passes GPU natifs. Les
 anciennes variantes de renderer conservées dans l’API délèguent au moteur natif.
+
+La parité des anciennes optimisations n'est pas complète : les requêtes
+d'occlusion GPU et leur prédiction de visibilité n'ont pas d'équivalent dans ce
+portage. Les anciens branchements du culling avancé propre au mod ont été
+retirés. Les options historiques correspondantes peuvent encore être présentes
+sans effet. Les variantes stencil et Iris ne constituent plus des algorithmes
+de rendu distincts. Ces limites sont indépendantes des exclusions de mods
+optionnels ci-dessous.
 
 ## Compatibilité optionnelle
 
@@ -61,6 +71,13 @@ utilisateurs ne font pas partie du scénario de validation.
 - Serveur Minestom réel + client Vulkan : négociation de deux mondes, chunks,
   entité équipée, coffre distant, ouverture/fermeture d’inventaire, traversée
   confirmée côté serveur et reconnexion avec le même compte local.
+- Scénario Minestom à trois mondes : clics gauche/droit sur une pierre à travers
+  deux portails, callback sans action et restauration de la prédiction cliente ;
+  interactions d'une entité avec décalage de coordonnées entre les mondes,
+  confirmées par les callbacks serveur.
+- Transferts explicites d'entités Minestom : position des yeux, rotation,
+  vitesse, échelle, modificateurs externes, même instance et refus de traversée
+  couverts par quatre tests supplémentaires.
 - Sodium + Iris avec pack GLSL actif : scénario de formes avancées, GUI,
   traversée et arrêt complet, sans réutilisation invalide des tampons GPU.
 - Ouverture des interfaces Cloth Config et d’empilement des dimensions.

@@ -1,19 +1,19 @@
 package qouteall.imm_ptl.core.render.renderer;
 
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.culling.Frustum;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
+
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+
 import qouteall.imm_ptl.core.CHelper;
 import qouteall.imm_ptl.core.ClientWorldLoader;
 import qouteall.imm_ptl.core.IPCGlobal;
@@ -27,7 +27,6 @@ import qouteall.imm_ptl.core.portal.Mirror;
 import qouteall.imm_ptl.core.portal.Portal;
 import qouteall.imm_ptl.core.portal.global_portals.GlobalPortalStorage;
 import qouteall.imm_ptl.core.render.MyGameRenderer;
-import qouteall.imm_ptl.core.render.MyRenderHelper;
 import qouteall.imm_ptl.core.render.TransformationManager;
 import qouteall.imm_ptl.core.render.context_management.PortalRendering;
 import qouteall.imm_ptl.core.render.context_management.RenderStates;
@@ -318,8 +317,13 @@ public abstract class PortalRenderer {
         
         if (IrisInterface.invoker.isIrisPresent()) {
             if (IrisInterface.invoker.isShaders()) {
-                if (IPCGlobal.experimentalIrisPortalRenderer) {
-                    switchRenderer(ExperimentalIrisPortalRenderer.instance);
+                if (IPGlobal.renderMode == IPGlobal.RenderMode.normal
+                        && (IPCGlobal.experimentalIrisPortalRenderer
+                                || IPCGlobal.debugEnableStencilWithIris)) {
+                    switchRenderer(
+                            IPCGlobal.debugEnableStencilWithIris
+                                    ? IPCGlobal.rendererUsingStencil
+                                    : ExperimentalIrisPortalRenderer.instance);
                     return;
                 }
                 
@@ -345,10 +349,9 @@ public abstract class PortalRenderer {
         if (IPCGlobal.renderer != renderer) {
             Helper.log("switched to renderer " + renderer.getClass());
             IPCGlobal.renderer = renderer;
-            
-            if (IrisInterface.invoker.isShaders()) {
-                IrisInterface.invoker.reloadPipelines();
-            }
+
+            // Strategies share isolated native world pipelines. Destroying Iris here would
+            // invalidate shader state already extracted for the current frame.
         }
     }
 }

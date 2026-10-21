@@ -1,13 +1,9 @@
 package qouteall.imm_ptl.core.compat.iris_compatibility;
 
 import net.irisshaders.iris.Iris;
-import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
 import net.irisshaders.iris.shadows.ShadowRenderer;
-import net.minecraft.client.renderer.LevelRenderer;
-import org.jetbrains.annotations.Nullable;
-import qouteall.q_misc_util.Helper;
 
-import java.lang.reflect.Field;
+import org.jetbrains.annotations.Nullable;
 
 public class IrisInterface {
     
@@ -61,7 +57,11 @@ public class IrisInterface {
         
         @Override
         public void reloadPipelines() {
-            Iris.getPipelineManager().destroyPipeline();
+            try {
+                Iris.reload();
+            } catch (java.io.IOException error) {
+                throw new IllegalStateException("Could not reload Iris shader pipelines", error);
+            }
         }
     
         @Nullable

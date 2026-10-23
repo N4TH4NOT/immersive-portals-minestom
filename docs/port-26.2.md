@@ -10,6 +10,13 @@ Les optimisations de visibilité, les modes de rendu et les réglages natifs ont
 Gravity Changer Unofficial Port a ensuite été identifié et intégré, y compris
 au pont Minestom ; voir [`gravity-26.2.md`](gravity-26.2.md).
 
+Complément du 22 octobre : la [revérification de la migration](migration-audit-26.2.md)
+corrige notamment la création de monde, les notifications de terrain entre vues,
+les téléportations locales et les ressources d’objets/datapacks. Elle porte la
+suite à 36 tests et ajoute un parcours Fabric intégré reproductible. Les essais
+ci-dessous décrivent les validations précédentes ; le nouveau rapport précise
+les vérifications relancées et leurs limites.
+
 ## Fonctions conservées et adaptations
 
 | Domaine | Adaptation 26.2 |

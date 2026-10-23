@@ -81,14 +81,26 @@ Se connecter avec le client Fabric ci-dessus.
 
 [Utiliser l’API Minestom](docs/minestom.md) ·
 [État du portage et validation](docs/port-26.2.md) ·
-[Comparaison des 69 commits amont](docs/upstream-1.21-review.md)
+[Comparaison des 69 commits amont](docs/upstream-1.21-review.md) ·
+[Revérification de la migration](docs/migration-audit-26.2.md)
+
+## Datapack d’exemple
+
+Les [sources du datapack](examples/custom_portal_gen/README.md) et l’archive
+`example_custom_portal_gen.zip` ciblent le format de données 107.1 de Minecraft
+26.2. `./gradlew examplePortalDatapack` reconstruit l’archive dans `build/examples/`.
+Ce pack optionnel déclare ses dimensions par datapack, sans DimLib, et fournit
+sept exemples de génération. L’installer à la création d’un monde.
 
 ## Intégrations exclues
 
-Les intégrations dépendant de DimLib, Gravity Changer, Pehkui, Flywheel,
-Porting Lib et Requiem sont écartées faute de version publiée pour 26.2 lors de
-la vérification du 20 octobre 2026. Cela concerne notamment l’ajout dynamique des
-anciennes dimensions alternatives et les changements de gravité.
+Les intégrations dépendant de DimLib, Pehkui, Flywheel, Porting Lib et Requiem
+restent écartées : aucune publication Fabric 26.2 n’a été trouvée sur Modrinth
+lors de la revérification du 22 octobre 2026. Cela concerne notamment l’ajout
+dynamique des anciennes dimensions alternatives. Cette absence de publication
+ne signifie pas nécessairement que ces mods sont abandonnés.
+Gravity Changer Unofficial Port dispose d’une version 26.2 et son intégration
+Fabric/Minestom est disponible ; voir [la documentation de gravité](docs/gravity-26.2.md).
 La taille des entités utilise l’attribut natif `SCALE` et reste disponible sans
 Pehkui. Les générateurs de terrain et les dimensions déclarées par datapack sont
 conservés, ainsi que les empilements entre dimensions existantes.

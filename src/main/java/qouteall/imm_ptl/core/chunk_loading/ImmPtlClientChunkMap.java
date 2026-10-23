@@ -75,6 +75,10 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
             modifyChunkMap(chunkMap -> {
                 chunkMap.remove(chunkPos.pack());
             });
+            removedLoadedChunks().add(chunkPos.pack());
+            addedLoadedChunks().remove(chunkPos.pack());
+            for (int y = level.getMinSectionY(); y < level.getMaxSectionY(); y++)
+                onSectionEmptinessChanged(chunkPos.x(), y, chunkPos.z(), false);
             
             O_O.postClientChunkUnloadEvent(chunk);
             this.level.unload(chunk);
@@ -155,10 +159,15 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
             modifyChunkMap(chunkMap -> {
                 chunkMap.put(chunkPosLong, worldChunkToPut);
             });
+            addedLoadedChunks().add(chunkPosLong);
+            removedLoadedChunks().remove(chunkPosLong);
         }
         else {
             loadChunkDataFromPacket(buf, nbt, worldChunk, consumer);
         }
+        for (int i = 0; i < worldChunk.getSectionsCount(); i++)
+            onSectionEmptinessChanged(x, worldChunk.getSectionYFromSectionIndex(i), z,
+                    worldChunk.getSection(i).hasOnlyAir());
         
         this.level.onChunkLoaded(new ChunkPos(x, z));
         O_O.postClientChunkLoadEvent(worldChunk);
@@ -234,6 +243,15 @@ public class ImmPtlClientChunkMap extends ClientChunkCache {
         });
     }
     
+    @Override
+    public void onSectionEmptinessChanged(int x, int y, int z, boolean empty) {
+        // The vanilla implementation is bounded by its unused ring-buffer storage.
+        long section = SectionPos.asLong(x, y, z);
+        (empty ? addedEmptySections() : removedEmptySections()).add(section);
+        (empty ? removedEmptySections() : addedEmptySections()).remove(section);
+        qouteall.imm_ptl.core.render.NativeWorldRenderer.sectionEmptinessChanged(level, x, y, z, empty);
+    }
+
     @Override
     public void onLightUpdate(LightLayer lightType, SectionPos chunkSectionPos) {
         qouteall.imm_ptl.core.render.NativeWorldRenderer.primary(level).extractor

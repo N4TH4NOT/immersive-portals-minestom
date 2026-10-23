@@ -21,6 +21,8 @@ public class MixinServerPlayerEntity_MA {
         TeleportTransition dimensionTransition, CallbackInfoReturnable<ServerPlayer> cir
     ) {
         ServerPlayer this_ = (ServerPlayer) (Object) this;
+        // Unlike 1.21's changeDimension, teleport also handles moves within one level.
+        if (dimensionTransition.newLevel() == this_.level()) return;
         onBeforeDimensionTravel(this_);
     }
     

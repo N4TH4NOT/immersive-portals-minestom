@@ -7,6 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -22,3 +24,4 @@ jobs:
             portal-protocol/build/libs/*.jar
             minestom/build/libs/*.jar
             minestom-example/build/distributions/*.zip
+            dependencies/gravity/gravity-*/build/libs/*.jar

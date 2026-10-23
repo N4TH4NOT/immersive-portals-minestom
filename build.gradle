@@ -127,3 +127,6 @@ if (providers.gradleProperty('portalSmoke').isPresent()) {
         tasks.named('runClient') { dependsOn prepareShaders }
     }
 }
+
+// Run the extracted library's checks alongside portal compatibility tests.
+tasks.named('check') { dependsOn gradle.includedBuild('immersive-portals-gravity').task(':build') }

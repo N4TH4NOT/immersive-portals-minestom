@@ -7,3 +7,5 @@ tasks.named('run') {
     systemProperty 'portal.example.gravity', providers.gradleProperty('portalSmokeGravity').isPresent().toString()
     systemProperty 'portal.example.interactions', providers.gradleProperty('portalSmokeInteractions').getOrElse('false')
 }
+
+sourceSets.main.java.srcDir new File(gradle.ext.gravitySources, 'compat-tests/minestom/example/java')

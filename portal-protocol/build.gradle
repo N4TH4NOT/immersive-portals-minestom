@@ -12,3 +12,5 @@ dependencies {
 test { useJUnitPlatform() }
 publishing { publications { mavenJava(MavenPublication) { from components.java } } }
 
+sourceSets.test.java.srcDir new File(gradle.ext.gravitySources, 'compat-tests/protocol/test/java')
+sourceSets.test.resources.srcDir new File(gradle.ext.gravitySources, 'compat-tests/protocol/test/resources')

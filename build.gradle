@@ -62,6 +62,7 @@ tasks.named('assemble') { dependsOn 'examplePortalDatapack' }
 if (providers.gradleProperty('portalSmoke').isPresent()) {
     sourceSets {
         smokeTest {
+            java.srcDir new File(gradle.ext.gravitySources, 'compat-tests/fabric/smokeTest/java')
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
             runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
         }

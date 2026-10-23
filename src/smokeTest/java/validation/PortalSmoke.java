@@ -161,6 +161,9 @@ public final class PortalSmoke implements ModInitializer {
                             || access.lZ() != 1)
                         throw new AssertionError("FastBlockAccess boundary regression");
                     System.out.println("PORTAL_SMOKE_ADVANCED_SHAPES_READY");
+                    if (Boolean.getBoolean("portalSmoke.singleplayer"))
+                        PortalSingleplayerSmoke.validate(server,
+                                java.util.List.of(portal, reverse, triangle, box, mirror, fused));
                     to.setBlock(new BlockPos(0, 70, -5), Blocks.CHEST.defaultBlockState(), 3);
                     System.out.println("PORTAL_SMOKE_SERVER_READY");
                 });
@@ -181,6 +184,8 @@ public final class PortalSmoke implements ModInitializer {
                             180,
                             0,
                             false);
+                    if (Boolean.getBoolean("portalSmoke.singleplayer"))
+                        PortalSingleplayerSmoke.validateSameWorldTeleport(handler.player);
                     pending.put(handler.player.getUUID(), scaled);
                     System.out.println("PORTAL_SMOKE_PLAYER_JOINED");
                 });

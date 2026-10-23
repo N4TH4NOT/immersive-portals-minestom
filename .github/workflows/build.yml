@@ -12,12 +12,13 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew build validateAccessWidener --console=plain
+      - run: ./gradlew build validateAccessWidener -PportalSmoke compileSmokeTestJava --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: immersive-portals-26.2
           path: |
             build/libs/*.jar
+            build/examples/*.zip
             portal-protocol/build/libs/*.jar
             minestom/build/libs/*.jar
             minestom-example/build/distributions/*.zip

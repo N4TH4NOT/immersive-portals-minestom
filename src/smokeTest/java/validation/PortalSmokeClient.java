@@ -12,8 +12,21 @@ public final class PortalSmokeClient implements ClientModInitializer {
     private int ticks;
     private boolean rendered;
     private boolean crossed;
+    private boolean singleplayerStarted;
     private final boolean interaction = Boolean.getBoolean("portalSmoke.interaction");
     private final boolean interactions = Boolean.getBoolean("portalSmoke.interactions");
+
+    private static void validateItemModels(net.minecraft.client.Minecraft client) {
+        var models = client.getModelManager();
+        var missing = models.getItemModel(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath("imm_ptl_smoke", "missing"));
+        for (String name : java.util.List.of("command_stick", "portal_helper", "portal_wand")) {
+            var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("immersive_portals", name);
+            if (models.getItemModel(id) == missing)
+                throw new AssertionError("Missing 26.2 item model definition: " + id);
+        }
+        System.out.println("PORTAL_SMOKE_ITEM_MODELS_OK");
+    }
 
     @Override
     public void onInitializeClient() {
@@ -27,7 +40,7 @@ public final class PortalSmokeClient implements ClientModInitializer {
                             client.options.setCameraType(
                                     net.minecraft.client.CameraType.FIRST_PERSON);
                         }
-                        if (bootTicks > 600)
+                        if (bootTicks > (Boolean.getBoolean("portalSmoke.singleplayer") ? 2400 : 600))
                             throw new AssertionError(
                                     "Could not join the local verification server");
                         if (++bootTicks % 100 == 0)
@@ -36,8 +49,16 @@ public final class PortalSmokeClient implements ClientModInitializer {
                                             + client.isGameLoadFinished()
                                             + " "
                                             + client.gui.screen());
+                        if (Boolean.getBoolean("portalSmoke.singleplayer") && bootTicks >= 100
+                                && client.isGameLoadFinished()) {
+                            PortalSingleplayerSmoke.finishOpening(client);
+                            if (!singleplayerStarted)
+                                singleplayerStarted = PortalSingleplayerSmoke.prepare(client);
+                            return;
+                        }
                         if (bootTicks >= 100
                                 && client.isGameLoadFinished()
+                                && !(client.gui.screen() instanceof net.minecraft.client.gui.screens.ConnectScreen)
                                 && bootTicks % 100 == 0) {
                             var data =
                                     new net.minecraft.client.multiplayer.ServerData(
@@ -57,6 +78,10 @@ public final class PortalSmokeClient implements ClientModInitializer {
                         return;
                     }
                     ticks++;
+                    if (ticks == 1) {
+                        validateItemModels(client);
+                        PortalMigrationSmoke.validate();
+                    }
                     if (Boolean.getBoolean("portalSmoke.gravity")) {
                         PortalGravitySmoke.tick(client, ticks);
                         return;

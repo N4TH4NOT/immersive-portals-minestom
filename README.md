@@ -24,16 +24,18 @@ Les anciennes implémentations OpenGL du moteur de rendu ont été remplacées.
 
 ## Compiler et installer
 
-Avec un JDK 25 :
+Avec un JDK 25, après récupération du sous-module de gravité :
 
 ```sh
+git submodule update --init --recursive
 ./gradlew build validateAccessWidener
 ```
 
 Le mod est produit dans `build/libs/immersive-portals-7.0.0-alpha.1.jar`.
 Installer ce JAR et Fabric API dans `mods/`, avec Fabric Loader 0.20.1.
 Utiliser le JAR sans suffixe `-sources`. Le protocole commun et Cloth Config sont
-embarqués ; la bibliothèque Minestom n’est pas un mod Fabric.
+embarqués, ainsi que l’adaptateur du [dépôt de gravité séparé](docs/gravity-repository.md)
+et son API ; la bibliothèque Minestom n’est pas un mod Fabric.
 
 La [gravité directionnelle](docs/gravity-26.2.md) s’intègre au client Fabric et
 au SDK Minestom : six directions, intensité, traversées et interactions distantes.

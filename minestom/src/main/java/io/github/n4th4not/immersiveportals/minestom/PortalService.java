@@ -1,6 +1,9 @@
 package io.github.n4th4not.immersiveportals.minestom;
 
 import io.github.n4th4not.immersiveportals.protocol.*;
+import io.github.n4th4not.gravity.api.GravityIdentity;
+import io.github.n4th4not.gravity.api.GravitySync;
+import io.github.n4th4not.gravity.api.GravityFrames;
 
 import net.kyori.adventure.key.Key;
 import net.minestom.server.MinecraftServer;
@@ -38,7 +41,7 @@ public final class PortalService implements AutoCloseable {
     private final ConcurrentLinkedQueue<Runnable> actions = new ConcurrentLinkedQueue<>();
     private final EventNode<Event> events = EventNode.all("immersive-portals");
     private final Task task;
-    private final PortalGravity gravity = new PortalGravity(this);
+    private final PortalGravity gravity = new PortalGravity(this::supportsGravity);
     private volatile boolean closed;
     private long tick;
     private Predicate<Player> authorization = p -> true;
@@ -50,7 +53,7 @@ public final class PortalService implements AutoCloseable {
         final UUID id = UUID.randomUUID();
         final Map<UUID, PortalDefinition> known = new HashMap<>();
         final Map<String, View> views = new HashMap<>();
-        final Map<GravityKey, SentGravity> gravitySent = new HashMap<>();
+        final GravitySync gravitySent = new GravitySync();
         int features;
         boolean travelling;
         long lastTeleport = -100;
@@ -61,10 +64,6 @@ public final class PortalService implements AutoCloseable {
             this.player = player;
         }
     }
-
-    private record GravityKey(String world, int id, UUID uuid) {}
-
-    private record SentGravity(GravityState state, long tick) {}
 
     private static final class View {
         final UUID id = UUID.randomUUID();
@@ -399,7 +398,7 @@ public final class PortalService implements AutoCloseable {
                         if (entity == s.player || entity.getViewers().contains(s.player))
                             syncGravity(s, entity, false);
                 }
-                s.gravitySent.entrySet().removeIf(e -> tick - e.getValue().tick() > 200);
+                s.gravitySent.expire(tick);
             }
         }
     }
@@ -478,9 +477,8 @@ public final class PortalService implements AutoCloseable {
         World target = worlds.get(p.destinationWorld());
         if (target == null) return false;
         GravityState nextGravity =
-                PortalOptions.of(p).changesGravity()
-                        ? gravity.get(player).rotated(p.rotation())
-                        : gravity.get(player);
+                GravityFrames.afterRotation(
+                        gravity.get(player), p.rotation(), PortalOptions.of(p).changesGravity());
         if (!supportsGravity(player) && !nextGravity.equals(GravityState.DEFAULT)) return false;
         s.travelling = true;
         s.lastTeleport = tick;
@@ -662,16 +660,13 @@ public final class PortalService implements AutoCloseable {
                 || !supportsGravity(session.player)
                 || entity.getInstance() == null) return;
         String world = entity.getInstance().getDimensionName();
-        var key = new GravityKey(world, entity.getEntityId(), entity.getUuid());
+        var key = new GravityIdentity(world, entity.getEntityId(), entity.getUuid());
         var state = gravity.get(entity);
-        var old = session.gravitySent.get(key);
-        if (force || old == null || !old.state().equals(state) || tick - old.tick() >= 100) {
-            if (session.gravitySent.size() >= 4096 && !session.gravitySent.containsKey(key)) return;
+        if (session.gravitySent.shouldSend(key, state, tick, force)) {
             send(
                     session.player,
                     new BridgeMessage.Gravity(
                             world, entity.getEntityId(), entity.getUuid(), state));
-            session.gravitySent.put(key, new SentGravity(state, tick));
         }
     }
 

@@ -1,6 +1,7 @@
 package io.github.n4th4not.immersiveportals.minestom;
 
 import io.github.n4th4not.immersiveportals.protocol.PortalDefinition;
+import io.github.n4th4not.gravity.api.GravityFrames;
 import io.github.n4th4not.immersiveportals.protocol.Vec3;
 
 import net.kyori.adventure.key.Key;
@@ -34,13 +35,11 @@ final class PortalEntityTeleportation {
         Vec3 destinationEye = portal.transformPoint(sourceEye);
         var oldGravity = gravity.get(entity);
         var nextGravity =
-                living != null && options.changesGravity()
-                        ? oldGravity.rotated(portal.rotation())
-                        : oldGravity;
+                GravityFrames.afterRotation(
+                        oldGravity, portal.rotation(), living != null && options.changesGravity());
         Vec3 direction =
-                nextGravity
-                        .direction()
-                        .toLocal(portal.rotation().rotate(gravity.lookDirection(entity)));
+                GravityFrames.localLookAfterRotation(
+                        nextGravity, portal.rotation(), gravity.lookDirection(entity));
         Vec3 velocity = portal.transformVector(vector(entity.getVelocity()));
         AttributeInstance attribute = living == null ? null : living.getAttribute(Attribute.SCALE);
         var previous =
@@ -69,10 +68,7 @@ final class PortalEntityTeleportation {
         }
         double newScale = living == null ? 1 : living.getAttributeValue(Attribute.SCALE);
         Vec3 feet =
-                destinationEye.subtract(
-                        nextGravity
-                                .direction()
-                                .toWorld(new Vec3(0, entity.getEyeHeight() * newScale, 0)));
+                GravityFrames.feetAtEye(nextGravity, destinationEye, entity.getEyeHeight() * newScale);
         Pos position =
                 new Pos(
                         feet.x(),

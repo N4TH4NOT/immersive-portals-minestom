@@ -72,6 +72,10 @@ public final class NativeWorldRenderer {
                 new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
         private final it.unimi.dsi.fastutil.longs.LongOpenHashSet unloaded =
                 new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+        private final it.unimi.dsi.fastutil.longs.LongOpenHashSet addedEmpty =
+                new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+        private final it.unimi.dsi.fastutil.longs.LongOpenHashSet removedEmpty =
+                new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
 
         private Scene(ClientLevel world, boolean borrowed) {
             this(world, borrowed, false);
@@ -85,6 +89,7 @@ public final class NativeWorldRenderer {
                 gameRenderer = CLIENT.gameRenderer;
                 renderer = CLIENT.levelRenderer;
                 extractor = CLIENT.levelExtractor;
+                seedLoadedChunks();
             } else {
                 gameRenderer =
                         primary
@@ -123,7 +128,11 @@ public final class NativeWorldRenderer {
                         extractor.setLevel(world);
                         return null;
                     });
-            if (world.getChunkSource()
+            seedLoadedChunks();
+        }
+
+        private void seedLoadedChunks() {
+            if (world != null && world.getChunkSource()
                     instanceof qouteall.imm_ptl.core.chunk_loading.ImmPtlClientChunkMap chunks) {
                 chunks.readChunkMap(
                         map -> {
@@ -166,13 +175,14 @@ public final class NativeWorldRenderer {
     }
 
     public static void registerCurrentWorld() {
-        SCENES.put(new SceneKey(CLIENT.level.dimension(), 0, 0), new Scene(CLIENT.level, true));
+        Scene previous = SCENES.put(new SceneKey(CLIENT.level.dimension(), 0, 0), new Scene(CLIENT.level, true));
+        if (previous != null && previous.renderer != CLIENT.levelRenderer) previous.close();
         PARTICLES.put(CLIENT.level, CLIENT.particleEngine);
     }
 
     public static Scene primary(ClientLevel world) {
         return SCENES.computeIfAbsent(
-                new SceneKey(world.dimension(), 0, 0), ignored -> new Scene(world, false, true));
+                new SceneKey(world.dimension(), 0, 0), ignored -> new Scene(world, world == CLIENT.level, true));
     }
 
     public static boolean isRenderingScene() {
@@ -476,8 +486,19 @@ public final class NativeWorldRenderer {
             net.minecraft.client.renderer.state.level.LevelRenderState state) {
         for (Scene scene : SCENES.values())
             if (scene.extractor == extractor) {
+                // The native cache alternates two delta buffers after each extraction.
+                // Recursive views may extract the same world again before this view renders.
+                // Keep each view's input independent of the next flip/clear.
+                ChunkRenderUpdates.snapshot(state.chunkLoadingRenderState);
                 state.chunkLoadingRenderState.addedLoadedChunks.addAll(scene.loaded);
                 state.chunkLoadingRenderState.removedLoadedChunks.addAll(scene.unloaded);
+                state.chunkLoadingRenderState.addedEmptySections.addAll(scene.addedEmpty);
+                state.chunkLoadingRenderState.removedEmptySections.addAll(scene.removedEmpty);
+                for (long position : scene.unloaded)
+                    for (int y = scene.world.getMinSectionY(); y < scene.world.getMaxSectionY(); y++)
+                        setSectionEmpty(state, net.minecraft.core.SectionPos.asLong(
+                                net.minecraft.world.level.ChunkPos.getX(position), y,
+                                net.minecraft.world.level.ChunkPos.getZ(position)), false);
                 for (long position : scene.loaded) {
                     var chunk =
                             scene.world
@@ -489,17 +510,29 @@ public final class NativeWorldRenderer {
                                             false);
                     if (chunk != null)
                         for (int i = 0; i < chunk.getSectionsCount(); i++)
-                            if (chunk.getSection(i).hasOnlyAir())
-                                state.chunkLoadingRenderState.addedEmptySections.add(
-                                        net.minecraft.core.SectionPos.asLong(
-                                                chunk.getPos().x(),
-                                                scene.world.getMinSectionY() + i,
-                                                chunk.getPos().z()));
+                            setSectionEmpty(state, net.minecraft.core.SectionPos.asLong(
+                                    chunk.getPos().x(), scene.world.getMinSectionY() + i,
+                                    chunk.getPos().z()), chunk.getSection(i).hasOnlyAir());
                 }
                 scene.loaded.clear();
                 scene.unloaded.clear();
+                scene.addedEmpty.clear();
+                scene.removedEmpty.clear();
                 return;
             }
+    }
+
+    private static void setSectionEmpty(net.minecraft.client.renderer.state.level.LevelRenderState state,
+            long section, boolean empty) {
+        ChunkRenderUpdates.setEmpty(state.chunkLoadingRenderState, section, empty);
+    }
+
+    public static void sectionEmptinessChanged(ClientLevel world, int x, int y, int z, boolean empty) {
+        long section = net.minecraft.core.SectionPos.asLong(x, y, z);
+        for (Scene scene : SCENES.values()) if (scene.world == world) {
+            (empty ? scene.addedEmpty : scene.removedEmpty).add(section);
+            (empty ? scene.removedEmpty : scene.addedEmpty).remove(section);
+        }
     }
 
     public static void markSectionDirty(

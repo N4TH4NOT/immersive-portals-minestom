@@ -180,7 +180,9 @@ public class ImmPtlChunkTickets {
             ChunkResult<LevelChunk> resultNow = chunkHolder.getFullChunkFuture()
                 .getNow(null);
             
-            if (resultNow == null) {
+            // Native holders can still expose the unloaded sentinel while a newly added
+            // loading ticket is being promoted. It is not a completed load failure.
+            if (resultNow == null || resultNow == ChunkHolder.UNLOADED_LEVEL_CHUNK) {
                 return false;
             }
             

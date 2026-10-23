@@ -1,5 +1,7 @@
 package io.github.n4th4not.immersiveportals.protocol;
 
+import io.github.n4th4not.gravity.api.GravityWire;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -88,14 +90,14 @@ public final class BridgeCodec {
                     out.writeDouble(m.portalScale());
                     out.writeFloat(m.yaw());
                     out.writeFloat(m.pitch());
-                    gravity(out, m.gravity());
+                    GravityWire.write(out, m.gravity());
                 }
                 case BridgeMessage.Gravity m -> {
                     out.writeByte(12);
                     text(out, m.world());
                     out.writeInt(m.entityId());
                     uuid(out, m.entity());
-                    gravity(out, m.state());
+                    GravityWire.write(out, m.state());
                 }
                 case BridgeMessage.Interaction m -> {
                     out.writeByte(10);
@@ -154,10 +156,10 @@ public final class BridgeCodec {
                                         in.readDouble(),
                                         in.readFloat(),
                                         in.readFloat(),
-                                        gravity(in));
+                                        GravityWire.read(in));
                         case 12 ->
                                 new BridgeMessage.Gravity(
-                                        text(in), in.readInt(), uuid(in), gravity(in));
+                                        text(in), in.readInt(), uuid(in), GravityWire.read(in));
                         case 10 -> {
                             int n = count(in, 3);
                             var path = new ArrayList<UUID>(n);
@@ -177,15 +179,6 @@ public final class BridgeCodec {
         int n = in.readInt();
         if (n < 0 || n > limit) throw new IllegalArgumentException("Invalid collection length");
         return n;
-    }
-
-    private static void gravity(DataOutputStream out, GravityState state) throws IOException {
-        out.writeByte(state.direction().ordinal());
-        out.writeDouble(state.strength());
-    }
-
-    private static GravityState gravity(DataInputStream in) throws IOException {
-        return new GravityState(GravityDirection.fromId(in.readUnsignedByte()), in.readDouble());
     }
 
     private static void uuid(DataOutputStream out, UUID id) throws IOException {

@@ -46,11 +46,15 @@ final class PortalRenderingSmoke {
         if ((RenderStates.frameIndex - firstFrame) * 2 <= logicalTicks) return;
         int ticks = ++logicalTicks;
         if (ticks == 20) client.player.connection.sendCommand("portal_smoke_wall true");
+        if (ticks == 50) capture(client, "portal-occlusion-check");
         if (ticks == 60) {
             require(
                     !PortalRenderInfo.get(center(client)).wasRenderedLastFrame(),
                     "Predicted occlusion still renders its world: "
-                            + NativePortalOcclusion.statistics());
+                            + NativePortalOcclusion.statistics() + " wall="
+                            + client.level.getBlockState(new BlockPos(0, 72, 2))
+                            + " camera=" + client.gameRenderer.mainCamera().position()
+                            + " yaw=" + client.player.getYRot());
             IPGlobal.offsetOcclusionQuery = false;
         }
         if (ticks == 80) {

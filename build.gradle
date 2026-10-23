@@ -49,6 +49,15 @@ publishing {
     publications { mavenJava(MavenPublication) { from components.java } }
 }
 
+tasks.register('examplePortalDatapack', Zip) {
+    from 'examples/custom_portal_gen'
+    archiveFileName = 'example_custom_portal_gen.zip'
+    destinationDirectory = layout.buildDirectory.dir('examples')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+tasks.named('assemble') { dependsOn 'examplePortalDatapack' }
+
 // Opt-in local runtime verification; these classes are never packaged in the mod.
 if (providers.gradleProperty('portalSmoke').isPresent()) {
     sourceSets {
@@ -56,6 +65,10 @@ if (providers.gradleProperty('portalSmoke').isPresent()) {
             compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
             runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
         }
+    }
+    tasks.named('processSmokeTestResources') {
+        from('examples/custom_portal_gen') { into 'migration-example' }
+        from(tasks.named('examplePortalDatapack')) { into 'migration-example' }
     }
     def prepareServer = tasks.register('preparePortalSmokeServer') {
         doLast {
@@ -76,7 +89,11 @@ if (providers.gradleProperty('portalSmoke').isPresent()) {
             client {
                 source sourceSets.smokeTest
                 runDir 'run/smoke-client'
-                programArgs '--quickPlayMultiplayer', '127.0.0.1:25567'
+                if (!providers.gradleProperty('portalSmokeSingleplayer').isPresent()) {
+                    programArgs '--quickPlayMultiplayer', providers.gradleProperty('portalSmokeAddress').getOrElse('127.0.0.1:25567')
+                }
+                vmArg '-DportalSmoke.singleplayer=' + providers.gradleProperty('portalSmokeSingleplayer').isPresent()
+                vmArg '-DportalSmoke.existingWorld=' + providers.gradleProperty('portalSmokeSingleplayerWorld').getOrElse('')
                 vmArg '-DportalSmoke.address=' + providers.gradleProperty('portalSmokeAddress').getOrElse('127.0.0.1:25567')
                 vmArg '-DportalSmoke.target=' + providers.gradleProperty('portalSmokeTarget').getOrElse('minecraft:the_nether')
                 vmArg '-DportalSmoke.interaction=' + providers.gradleProperty('portalSmokeInteraction').getOrElse('false')

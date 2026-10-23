@@ -25,7 +25,6 @@ public class IPCompatMixinPlugin implements IMixinConfigPlugin {
         
         
         FabricLoader fabricLoader = FabricLoader.getInstance();
-        if (mixinClassName.contains("Gravity")) return fabricLoader.isModLoaded("gravity_changer");
         if (mixinClassName.contains("IrisSodium")) {
             boolean sodiumLoaded = fabricLoader.isModLoaded("sodium");
             boolean irisLoaded = fabricLoader.isModLoaded("iris");

@@ -12,8 +12,9 @@ repositories {
 loom { accessWidenerPath = file('src/main/resources/imm_ptl.accesswidener') }
 dependencies {
     implementation project(':portal-protocol')
+    implementation 'io.github.n4th4not.gravity:gravity-fabric:1.0.0-alpha.1'
+    include 'io.github.n4th4not.gravity:gravity-fabric:1.0.0-alpha.1'
     include project(':portal-protocol')
-    include 'io.github.n4th4not.gravity:gravity-api:1.0.0-alpha.1'
     minecraft "com.mojang:minecraft:${minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
@@ -22,14 +23,12 @@ dependencies {
     compileOnly "maven.modrinth:modmenu:${modmenu_version}"
     compileOnly "${sodium_path}"
     compileOnly "${iris_path}"
-    compileOnly "${gravity_path}"
     if (providers.gradleProperty('portalSmokeGravity').isPresent()) runtimeOnly "${gravity_path}"
     if (providers.gradleProperty('portalSmokeSodium').isPresent() || providers.gradleProperty('portalSmokeIris').isPresent()) runtimeOnly "${sodium_path}"
     if (providers.gradleProperty('portalSmokeIris').isPresent()) runtimeOnly "${iris_path}"
     testImplementation platform('org.junit:junit-bom:5.14.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    testImplementation "${gravity_path}"
 }
 processResources {
     inputs.property 'version', project.version

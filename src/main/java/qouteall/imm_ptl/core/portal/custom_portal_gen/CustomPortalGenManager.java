@@ -129,6 +129,7 @@ public class CustomPortalGenManager {
                     );
                     return;
                 }
+                load(reverse);
             }
             else {
                 McHelper.sendMessageToFirstLoggedPlayer(

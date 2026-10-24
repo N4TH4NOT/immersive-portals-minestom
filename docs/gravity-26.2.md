@@ -1,5 +1,5 @@
-# Gravité Minecraft 26.2
+# Gravity integration
 
-La documentation est maintenue dans le dépôt séparé [gravity-changer](https://github.com/N4TH4NOT/gravity-changer/blob/main/docs/gravity-26.2.md).
+[English](gravity-26.2.md) · [Français](gravity-26.2.fr.md)
 
-Voir aussi [la liaison des deux dépôts](gravity-repository.md).
+The guide is maintained in [gravity-changer](https://github.com/N4TH4NOT/gravity-changer/blob/main/docs/gravity-26.2.md). See [repository integration](gravity-repository.md) for the pinned dependency.

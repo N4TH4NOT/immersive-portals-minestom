@@ -1,1 +1,5 @@
-Changed Sodium compat to Sodium 0.6.0 and Iris compat to 1.8.0. Note that this version is experimental.
+# Changes
+
+[English](changelog.md) · [Français](changelog.fr.md)
+
+See the [commit history](https://github.com/N4TH4NOT/immersive-portals-minestom/commits/port-26.2) and [migration findings](docs/migration-audit-26.2.md).

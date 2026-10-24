@@ -62,6 +62,23 @@ public record PortalDefinition(
         return extraNbt.clone();
     }
 
+    @Override
+    public boolean equals(Object other) {
+        return this == other || other instanceof PortalDefinition p
+                && id.equals(p.id) && sourceWorld.equals(p.sourceWorld)
+                && destinationWorld.equals(p.destinationWorld) && origin.equals(p.origin)
+                && destination.equals(p.destination) && axisW.equals(p.axisW) && axisH.equals(p.axisH)
+                && Double.compare(width, p.width) == 0 && Double.compare(height, p.height) == 0
+                && Double.compare(scale, p.scale) == 0 && rotation.equals(p.rotation) && kind == p.kind
+                && java.util.Arrays.equals(extraNbt, p.extraNbt);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, sourceWorld, destinationWorld, origin, destination, axisW, axisH,
+                width, height, scale, rotation, kind, java.util.Arrays.hashCode(extraNbt));
+    }
+
     public Vec3 normal() {
         return axisW.cross(axisH);
     }

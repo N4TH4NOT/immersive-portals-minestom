@@ -192,6 +192,8 @@ public class GlobalPortalStorage extends SavedData {
         McHelper.getRawPlayerList().forEach(
             player -> player.connection.send(packet)
         );
+        // An immediate broadcast (e.g. after a dimension update) also resolves the pending tick sync.
+        shouldReSync = false;
     }
     
     public void fromNbt(CompoundTag tag) {

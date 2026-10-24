@@ -54,6 +54,7 @@ public final class PortalService implements AutoCloseable {
         final Map<UUID, PortalDefinition> known = new HashMap<>();
         final Map<String, View> views = new HashMap<>();
         final GravitySync gravitySent = new GravitySync();
+        List<BridgeMessage.World> announcedWorlds;
         int features;
         boolean travelling;
         long lastTeleport = -100;
@@ -69,7 +70,8 @@ public final class PortalService implements AutoCloseable {
         final UUID id = UUID.randomUUID();
         final String world;
         final Set<Long> chunks = new HashSet<>();
-        final Set<Integer> entities = new HashSet<>();
+        final RemoteEntityTracker entities = new RemoteEntityTracker();
+        final Map<net.minestom.server.coordinate.Vec, Integer> blocksSent = new HashMap<>();
         int sequence;
 
         View(String world) {
@@ -175,6 +177,7 @@ public final class PortalService implements AutoCloseable {
         World old = worlds.putIfAbsent(meta.key(), new World(instance, seaLevel));
         if (old != null && old.instance() != instance)
             throw new IllegalArgumentException("World key already belongs to another instance");
+        if (old != null) return;
         if (worlds.size() > 64) {
             worlds.remove(meta.key());
             throw new IllegalStateException("At most 64 worlds can be registered");
@@ -184,7 +187,9 @@ public final class PortalService implements AutoCloseable {
 
     public void unregisterWorld(Instance instance) {
         String key = instance.getDimensionName();
-        worlds.computeIfPresent(key, (k, w) -> w.instance() == instance ? null : w);
+        World registered = worlds.get(key);
+        if (registered == null || registered.instance() != instance
+                || !worlds.remove(key, registered)) return;
         portals.values()
                 .removeIf(p -> p.sourceWorld().equals(key) || p.destinationWorld().equals(key));
         actions.add(() -> snapshotSessions().forEach(this::welcome));
@@ -295,7 +300,9 @@ public final class PortalService implements AutoCloseable {
                                                         .asString(),
                                                 e.getValue().seaLevel()))
                         .toList();
+        if (list.equals(s.announcedWorlds)) return;
         send(s.player, new BridgeMessage.Welcome(s.id, list));
+        s.announcedWorlds = list;
     }
 
     private void receive(Player player, byte[] data) {
@@ -355,7 +362,7 @@ public final class PortalService implements AutoCloseable {
         else {
             View view = session.views.get(event.instance().getDimensionName());
             if (view != null) {
-                worldPacket(session, view, update);
+                worldPacket(session, view, update, true);
                 worldPacket(session, view, ack);
             }
         }
@@ -364,6 +371,8 @@ public final class PortalService implements AutoCloseable {
     private synchronized void tick() {
         if (closed) return;
         tick++;
+        for (Session s : snapshotSessions())
+            for (View view : s.views.values()) view.blocksSent.clear();
         gravity.cleanup();
         for (int n = 0; n < 4096; n++) {
             Runnable action = actions.poll();
@@ -387,7 +396,7 @@ public final class PortalService implements AutoCloseable {
                     s.known.remove(id);
                 }
             for (var p : allowed.values())
-                if (s.known.get(p.id()) != p) {
+                if (!p.equals(s.known.get(p.id()))) {
                     send(s.player, new BridgeMessage.Upsert(p));
                     s.known.put(p.id(), p);
                 }
@@ -408,7 +417,6 @@ public final class PortalService implements AutoCloseable {
         if (s != null) gravity.reset(player);
         if (s != null && player.isOnline()) {
             send(player, new BridgeMessage.Clear());
-            for (View view : s.views.values()) send(player, new BridgeMessage.CloseView(view.id));
         }
     }
 
@@ -427,6 +435,8 @@ public final class PortalService implements AutoCloseable {
     private void rejectTeleport(Session s) {
         Player p = s.player;
         if (p.getInstance() == null) return;
+        String world = p.getInstance().getDimensionName();
+        GravityState state = gravity.get(p);
         double factor =
                 p.getAttribute(Attribute.SCALE).modifiers().stream()
                         .filter(m -> m.id().equals(Key.key("iportal:scaling")))
@@ -436,13 +446,16 @@ public final class PortalService implements AutoCloseable {
         send(
                 p,
                 new BridgeMessage.Correction(
-                        p.getInstance().getDimensionName(),
+                        world,
                         vec(p.getPosition()),
                         vec(p.getVelocity()),
                         factor,
                         p.getPosition().yaw(),
                         p.getPosition().pitch(),
-                        gravity.get(p)));
+                        state));
+        if (supportsGravity(p))
+            s.gravitySent.recordSent(new GravityIdentity(world,
+                    p.getEntityId(), p.getUuid()), state, tick);
     }
 
     private boolean tryTeleport(Session s, BridgeMessage.Teleport request) {
@@ -591,68 +604,13 @@ public final class PortalService implements AutoCloseable {
                             pack(entity.getPosition().chunkX(), entity.getPosition().chunkZ())))
                 continue;
             desired.add(entity.getEntityId());
-            if (!view.entities.contains(entity.getEntityId())) {
-                int data =
-                        entity.getEntityMeta()
-                                        instanceof
-                                        net.minestom.server.entity.metadata.ObjectDataProvider
-                                                provider
-                                ? provider.getObjectData()
-                                : 0;
-                worldPacket(
-                        s,
-                        view,
-                        new SpawnEntityPacket(
-                                entity.getEntityId(),
-                                entity.getUuid(),
-                                entity.getEntityType(),
-                                entity.getPosition(),
-                                entity.getPosition().yaw(),
-                                data,
-                                entity.getVelocity().div(20)));
-            }
-            worldPacket(
-                    s,
-                    view,
-                    new EntityPositionSyncPacket(
-                            entity.getEntityId(),
-                            entity.getPosition(),
-                            entity.getVelocity().div(20),
-                            entity.getPosition().yaw(),
-                            entity.getPosition().pitch(),
-                            gravity.get(entity).direction() == GravityDirection.DOWN ? entity.isOnGround() : gravity.isOnGround(entity)));
-            worldPacket(
-                    s,
-                    view,
-                    new EntityHeadLookPacket(entity.getEntityId(), entity.getHeadRotation()));
-            worldPacket(s, view, entity.getMetadataPacket());
-            if (entity instanceof LivingEntity living) {
-                worldPacket(
-                        s,
-                        view,
-                        new EntityAttributesPacket(
-                                entity.getEntityId(),
-                                living.getAttributes().stream()
-                                        .map(
-                                                a ->
-                                                        new EntityAttributesPacket.Property(
-                                                                a.getAttribute(),
-                                                                a.getBaseValue(),
-                                                                a.modifiers()))
-                                        .toList()));
-                var equipment =
-                        new EnumMap<EquipmentSlot, net.minestom.server.item.ItemStack>(
-                                EquipmentSlot.class);
-                for (var slot : EquipmentSlot.values())
-                    equipment.put(slot, living.getEquipment(slot));
-                worldPacket(s, view, new EntityEquipmentPacket(entity.getEntityId(), equipment));
-                syncGravity(s, living, !view.entities.contains(entity.getEntityId()));
-            }
+            boolean appeared = view.entities.update(entity,
+                    gravity.get(entity).direction() == GravityDirection.DOWN
+                            ? entity.isOnGround() : gravity.isOnGround(entity), tick,
+                    packet -> worldPacket(s, view, packet));
+            if (entity instanceof LivingEntity) syncGravity(s, entity, appeared);
         }
-        for (int id : view.entities)
-            if (!desired.contains(id)) worldPacket(s, view, new DestroyEntitiesPacket(List.of(id)));
-        view.entities.clear();
-        view.entities.addAll(desired);
+        view.entities.retain(desired, packet -> worldPacket(s, view, packet));
     }
 
     private void syncGravity(Session session, Entity entity, boolean force) {
@@ -671,6 +629,16 @@ public final class PortalService implements AutoCloseable {
     }
 
     private void worldPacket(Session s, View view, ServerPacket packet) {
+        worldPacket(s, view, packet, false);
+    }
+
+    private void worldPacket(Session s, View view, ServerPacket packet, boolean predictionBarrier) {
+        if (packet instanceof BlockChangePacket block) {
+            var position = new net.minestom.server.coordinate.Vec(block.blockPosition().blockX(),
+                    block.blockPosition().blockY(), block.blockPosition().blockZ());
+            Integer previous = view.blocksSent.put(position, block.blockStateId());
+            if (!predictionBarrier && Objects.equals(previous, block.blockStateId())) return;
+        }
         byte[] bytes = NativePackets.encode(packet);
         if (bytes.length > 2_097_152)
             throw new IllegalArgumentException("World packet exceeds 2 MiB");
@@ -701,7 +669,12 @@ public final class PortalService implements AutoCloseable {
     private void forwardWorldPacket(Instance instance, ServerPacket packet) {
         for (Session s : snapshotSessions()) {
             View view = s.views.get(instance.getDimensionName());
-            if (view != null) worldPacket(s, view, packet);
+            if (view == null) continue;
+            // Unsent or invalidated chunks will arrive as complete snapshots, including the block.
+            if (packet instanceof BlockChangePacket block && !view.chunks.contains(
+                    pack(block.blockPosition().chunkX(), block.blockPosition().chunkZ()))) continue;
+            view.entities.observe(packet, tick);
+            worldPacket(s, view, packet);
         }
     }
 

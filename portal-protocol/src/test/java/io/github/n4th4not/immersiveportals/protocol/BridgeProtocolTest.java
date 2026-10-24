@@ -134,4 +134,15 @@ class BridgeProtocolTest {
         p.extraNbt()[1] = 9;
         assertArrayEquals(new byte[] {1, 2}, p.extraNbt());
     }
+
+    @Test
+    void equivalentDefinitionsHaveValueEqualityIncludingTheirNbt() {
+        var original = portal().toBuilder().extraNbt(new byte[] {1, 2}).build();
+        var rebuilt = original.toBuilder().build();
+        assertEquals(original, rebuilt);
+        assertEquals(original.hashCode(), rebuilt.hashCode());
+        assertTrue(java.util.Set.of(original).contains(rebuilt));
+        assertNotEquals(original, rebuilt.toBuilder().extraNbt(new byte[] {1, 3}).build());
+        assertNotEquals(original, rebuilt.toBuilder().scale(3).build());
+    }
 }

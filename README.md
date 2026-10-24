@@ -84,7 +84,8 @@ Se connecter avec le client Fabric ci-dessus.
 [Utiliser l’API Minestom](docs/minestom.md) ·
 [État du portage et validation](docs/port-26.2.md) ·
 [Comparaison des 69 commits amont](docs/upstream-1.21-review.md) ·
-[Revérification de la migration](docs/migration-audit-26.2.md)
+[Revérification de la migration](docs/migration-audit-26.2.md) ·
+[Audit des paquets et doublons réseau](docs/network-audit-26.2.md)
 
 ## Datapack d’exemple
 
